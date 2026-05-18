@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>9jaWatchers — Earn With Every Click</title>
-  <script src="https://js.paystack.co/v2/inline.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
@@ -360,39 +359,19 @@ function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan }) {
     }
   }, [initialSelectedPlan]);
 
- const handlePaystackExecute = () => {
-    // 1. Calculate transaction amount in Kobo (Paystack requires Kobo: ₦1 = 100 Kobo)
-    const exactAmountInKobo = (selectedPlan === 'premium' ? 8000 : 4000) * 100;
-    
-    // 2. Initialize the Paystack Popup engine
-    try {
-      const paystack = new PaystackPop();
-      paystack.newTransaction({
-        key: 'pk_live_56cd68f5adb0e165c34545bee318900fcd3505e3', // Replace with your Public Key
-        email: formData.email,
-        amount: exactAmountInKobo,
-        currency: 'NGN',
-        metadata: {
-          custom_fields: [
-            { display_name: "Full Name", variable_name: "customer_name", value: formData.name },
-            { display_name: "Plan Target", variable_name: "plan_target", value: selectedPlan }
-          ]
-        },
-        onSuccess: (transaction) => {
-          // Executed only if payment passes through safely
-          alert(`Clearance Successful! Reference token: ${transaction.reference}`);
-          onLoginSuccess(selectedPlan);
-        },
-        onCancel: () => {
-          alert("Payment gateway session terminated by client.");
-        },
-        onError: (error) => {
-          alert(`Gateway Exception Error: ${error.message}`);
-        }
-      });
-    } catch (err) {
-      alert("Failed to connect to Paystack payment nodes. Ensure script tag is loaded properly.");
-    }
+  const handleAuthSubmit = (e) => {
+    e.preventDefault();
+    setIsProcessing(true);
+    setTimeout(() => {
+      setIsProcessing(false);
+      if (isLogin) {
+        if (formData.email.toLowerCase().includes('admin')) onLoginSuccess('admin');
+        else if (formData.email.toLowerCase().includes('premium')) onLoginSuccess('premium');
+        else onLoginSuccess('basic');
+      } else {
+        setStep(2); // Advance to Paystack processing gateway interface simulation
+      }
+    }, 1000);
   };
 
   const handlePaystackExecute = () => {
