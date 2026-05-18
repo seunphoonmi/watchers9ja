@@ -376,13 +376,38 @@ function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan }) {
   };
 
   const handlePaystackExecute = () => {
-    setPaystackSimulated(true);
-    setIsProcessing(true);
-    setTimeout(() => {
-      setIsProcessing(false);
-      setPaystackSimulated(false);
-      onLoginSuccess(selectedPlan);
-    }, 2000);
+    // 1. Calculate transaction amount in Kobo (Paystack requires Kobo: ₦1 = 100 Kobo)
+    const exactAmountInKobo = (selectedPlan === 'premium' ? 8000 : 4000) * 100;
+    
+    // 2. Initialize the Paystack Popup engine
+    try {
+      const paystack = new PaystackPop();
+      paystack.newTransaction({
+        key: 'pk_live_56cd68f5adb0e165c34545bee318900fcd3505e3', // Replace with your Public Key
+        email: formData.email,
+        amount: exactAmountInKobo,
+        currency: 'NGN',
+        metadata: {
+          custom_fields: [
+            { display_name: "Full Name", variable_name: "customer_name", value: formData.name },
+            { display_name: "Plan Target", variable_name: "plan_target", value: selectedPlan }
+          ]
+        },
+        onSuccess: (transaction) => {
+          // Executed only if payment passes through safely
+          alert(`Clearance Successful! Reference token: ${transaction.reference}`);
+          onLoginSuccess(selectedPlan);
+        },
+        onCancel: () => {
+          alert("Payment gateway session terminated by client.");
+        },
+        onError: (error) => {
+          alert(`Gateway Exception Error: ${error.message}`);
+        }
+      });
+    } catch (err) {
+      alert("Failed to connect to Paystack payment nodes. Ensure script tag is loaded properly.");
+    }
   };
 
   return (
