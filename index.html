@@ -314,7 +314,7 @@ function LandingPage({ setScreen, setPlanSelection }) {
       </div>
 
       <div id="tiers" style={{ maxWidth: 900, margin: '0 auto', padding: '60px 20px' }}>
-        <h2 style={{ textAlign: 'center', fontSize: 32, fontWeight: 800, marginBottom: 12 }}>Transparent Framework Contracts</h2>
+        <h2 style={{ textAlign: 'center', fontSize: 32, fontWeight: 800, marginBottom: 12 }}>Explore our EARNING options here </h2>
         <p style={{ textAlign: 'center', color: 'var(--clr-muted)', fontSize: 15, marginBottom: 48 }}>One-time network entry operational overhead. Zero recurring asset processing fees.</p>
         <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', justifyContent: 'center' }}>
           
@@ -455,12 +455,12 @@ function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan }) {
             </h2>
             {!isLogin && (
               <div style={{ marginBottom: 16 }}>
-                <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 6 }}>Legal Full Name</label>
-                <input required type="text" className="withdraw-input" placeholder="e.g., Oluwaseun Ogunseye" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 6 }}> Full Name(Same as Bank account name) </label>
+                <input required type="text" className="withdraw-input" placeholder="e.g., mark ibrahim" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
               </div>
             )}
             <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 6 }}>System Network Email</label>
+              <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 6 }}>Email Address </label>
               <input required type="email" className="withdraw-input" placeholder="you@example.com" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
             </div>
             {!isLogin && (
@@ -470,11 +470,11 @@ function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan }) {
               </div>
             )}
             <div style={{ marginBottom: 20 }}>
-              <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 6 }}>Account Access Key Token (Password)</label>
+              <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 6 }}> Password </label>
               <input required type="password" className="withdraw-input" placeholder="••••••••" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
             </div>
             
-            <Btn full disabled={isProcessing}>{isProcessing ? 'Validating State Token...' : isLogin ? 'Authorize Entry' : 'Advance To Payment Clearance'}</Btn>
+            <Btn full disabled={isProcessing}>{isProcessing ? 'Validating State Token...' : isLogin ? 'Authorize Entry' : 'Start Earning Now'}</Btn>
             
             <p style={{ textAlign: 'center', marginTop: 20, fontSize: 14, color: 'var(--clr-muted)' }}>
               {isLogin ? "Need a platform tracking slot? " : "Already verified? "}
@@ -496,12 +496,12 @@ function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan }) {
             {paystackSimulated ? (
               <div style={{ textAlign: 'center', padding: '40px 0' }}>
                 <div style={{ display: 'inline-block', width: 40, height: 40, border: '4px solid #3bb75e33', borderTopColor: '#3bb75e', borderRadius: '50%', animation: 'pulse 1s infinite' }} />
-                <h3 style={{ fontSize: 18, fontWeight: 800, marginTop: 20, color: '#3bb75e' }}>Securing Paystack Processing Engine Layer...</h3>
+                <h3 style={{ fontSize: 18, fontWeight: 800, marginTop: 20, color: '#3bb75e' }}>You are about to be FREE financially...</h3>
                 <p style={{ color: 'var(--clr-muted)', fontSize: 13, marginTop: 8 }}>Communicating financial ledger data securely.</p>
               </div>
             ) : (
               <div>
-                <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 8, textAlign: 'center' }}>Secure Payment Node Interface</h3>
+                <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 8, textAlign: 'center' }}>Secure your spot </h3>
                 <p style={{ color: 'var(--clr-muted)', fontSize: 13, textAlign: 'center', marginBottom: 24 }}>Paystack Merchant System Clearing Integration</p>
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
@@ -520,7 +520,7 @@ function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan }) {
                 </div>
 
                 <Btn full variant={selectedPlan === 'premium' ? 'purple' : 'green'} onClick={handlePaystackExecute}>
-                  Complete ₦{selectedPlan === 'basic' ? '4,000' : '8,000'} Sandbox Clearance
+                  Complete ₦{selectedPlan === 'basic' ? '4,000' : '8,000'} watchers9ja Clearance
                 </Btn>
                 <div style={{ textAlign: 'center', marginTop: 16 }}>
                   <span style={{ color: 'var(--clr-muted)', cursor: 'pointer', fontSize: 13 }} onClick={() => setStep(1)}>← Modify Base Configurations</span>
