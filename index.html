@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>9jaWatchers — Earn With Every Click</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-dark: #0f1f13;
+      --bg-card: #162a1b;
+      --clr-green: #22c55e;
+      --clr-gold: #f59e0b;
+      --clr-purple: #a855f7;
+      --clr-blue: #3b82f6;
+      --clr-red: #ef4444;
+      --clr-pink: #ec4899;
+      --clr-muted: #94a3b8;
+      --clr-text: #e2e8f0;
+      --border-color: #22c55e22;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg-dark); color: var(--clr-text); min-height: 100vh; overflow-x: hidden; }
+    
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-dark); }
+    ::-webkit-scrollbar-thumb { background: #22c55e44; border-radius: 10px; }
+    
+    input, select, button { font-family: 'Inter', sans-serif; outline: none; }
+    input::placeholder { color: #4a5568; }
+    * { transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s; }
+    
+    .sidebar-scroll { overflow-y: auto; height: calc(100vh - 180px); }
+    .main-scroll { overflow-y: auto; height: 100vh; }
+    
+    @media (max-width: 768px) {
+      .sidebar { display: none !important; }
+      .main-content { padding: 16px !important; }
+      .mobile-nav-toggle { display: flex !important; }
+    }
+    
+    .btn-green:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 20px #22c55e44; cursor: pointer; }
+    .btn-gold:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 20px #f59e0b44; cursor: pointer; }
+    .btn-purple:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 20px #a855f744; cursor: pointer; }
+    .btn-ghost:hover:not(:disabled) { background: #22c55e11; cursor: pointer; }
+    .btn-danger:hover:not(:disabled) { background: #ef444433; cursor: pointer; }
+
+    .plan-card { border-radius: 18px; padding: 28px; flex: 1; min-width: 280px; transition: all 0.3s; background: var(--bg-card); border: 1px solid var(--border-color); }
+    .plan-card:hover { transform: translateY(-4px); border-color: #22c55e55; }
+    .stat-card { border-radius: 14px; padding: 18px 20px; flex: 1; min-width: 160px; background: var(--bg-card); }
+    
+    .withdraw-input { width: 100%; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 10px; padding: 11px 14px; color: var(--clr-text); font-size: 14px; }
+    .withdraw-input:focus { border-color: var(--clr-green); }
+    select.withdraw-input option { background: #162a1b; }
+    
+    .timer-circle { width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+    .progress-bar { transition: width 0.2s linear; }
+    .fade-in { animation: fadeIn 0.4s ease forwards; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    
+    .gradient-text { background: linear-gradient(135deg, var(--clr-green), var(--clr-gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .modal-overlay { position: fixed; inset: 0; background: #000000cc; display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 20px; }
+    
+    .nav-item { cursor: pointer; border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; margin-bottom: 4px; font-size: 14px; font-weight: 500; color: var(--clr-muted); }
+    .nav-item.active { background: #22c55e22; color: var(--clr-green); font-weight: 700; border-left: 3px solid var(--clr-green); }
+    .nav-item:hover:not(.active) { background: #22c55e11; color: var(--clr-green); }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+// ─── CONSTANTS & CONFIG ───────────────────────────────────────────────────────
+const naira = (n) => `₦${Number(n || 0).toLocaleString()}`;
+const TASK_ICON  = { video: '▶', follow: '👤', like: '❤️', comment: '💬' };
+const TASK_COLOR = { video: '#ef4444', follow: '#3b82f6', like: '#ec4899', comment: '#f59e0b' };
+
+// Global system initial task states
+const INITIAL_TASKS = [
+  { id: 1, type: 'video', title: 'Watch GTBank 2026 Brand Video', url: 'https://youtube.com', reward: 150, plan: 'both' },
+  { id: 2, type: 'video', title: 'Watch Flutterwave Campaign Video', url: 'https://youtube.com', reward: 150, plan: 'both' },
+  { id: 3, type: 'video', title: 'Watch Dangote Foundation Advert', url: 'https://youtube.com', reward: 200, plan: 'both' },
+  { id: 4, type: 'follow', title: 'Follow @NigerianStartups on Instagram', url: 'https://instagram.com', reward: 100, plan: 'both' },
+  { id: 5, type: 'follow', title: 'Follow @TechPointNG on Twitter', url: 'https://twitter.com', reward: 100, plan: 'both' },
+  { id: 6, type: 'like', title: 'Like Paystack New Feature Post', url: 'https://twitter.com', reward: 80, plan: 'both' },
+  { id: 7, type: 'like', title: 'Like Africa Fintech Festival Post', url: 'https://instagram.com', reward: 80, plan: 'both' },
+  { id: 8, type: 'comment', title: 'Comment on MTN Data Offer Post', url: 'https://facebook.com', reward: 120, plan: 'both' },
+  { id: 9, type: 'video', title: 'Watch Konga Flash Sale Ad', url: 'https://youtube.com', reward: 250, plan: 'premium' },
+  { id: 10, type: 'video', title: 'Watch Zenith Bank Digital Ad', url: 'https://youtube.com', reward: 250, plan: 'premium' },
+  { id: 11, type: 'follow', title: 'Follow @LagosTechHub on LinkedIn', url: 'https://linkedin.com', reward: 150, plan: 'premium' },
+  { id: 12, type: 'follow', title: 'Follow @NaijaTech on Instagram', url: 'https://instagram.com', reward: 150, plan: 'premium' },
+  { id: 13, type: 'follow', title: 'Follow @AfricanStartups on Twitter', url: 'https://twitter.com', reward: 150, plan: 'premium' },
+  { id: 14, type: 'like', title: 'Like Cowrywise Investment Tips Post', url: 'https://twitter.com', reward: 100, plan: 'premium' },
+  { id: 15, type: 'like', title: 'Like Carbon Financial Services Post', url: 'https://instagram.com', reward: 100, plan: 'premium' },
+  { id: 16, type: 'comment', title: 'Comment on Piggyvest Savings Post', url: 'https://instagram.com', reward: 200, plan: 'premium' },
+  { id: 17, type: 'comment', title: 'Comment on ChipperCash Promo', url: 'https://facebook.com', reward: 200, plan: 'premium' },
+  { id: 18, type: 'video',   title: 'Watch Access Bank Youth Campaign', url: 'https://youtube.com', reward: 300, plan: 'premium' },
+  { id: 19, type: 'follow',  title: 'Follow @StartupNation on Twitter', url: 'https://twitter.com', reward: 150, plan: 'premium' },
+  { id: 20, type: 'like',    title: 'Like Andela Nigeria Careers Post', url: 'https://linkedin.com', reward: 120, plan: 'premium' },
+];
+
+const INITIAL_USERS = [
+  { id: 1, name: 'Oluwaseun Ogunseye', email: 'seun@email.com', plan: 'premium', balance: 14500, joined: '10 May', tasks: 18, refs: 3, status: 'active' },
+  { id: 2, name: 'Chidi Okafor', email: 'chidi@email.com', plan: 'basic', balance: 3200, joined: '11 May', tasks: 6, refs: 1, status: 'active' },
+  { id: 3, name: 'Amaka Nwosu', email: 'amaka@email.com', plan: 'premium', balance: 22000, joined: '08 May', tasks: 20, refs: 7, status: 'active' },
+  { id: 4, name: 'Tunde Balogun', email: 'tunde@email.com', plan: 'basic', balance: 1800, joined: '12 May', tasks: 5, refs: 0, status: 'suspended' },
+];
+
+const INITIAL_WITHDRAWALS = [
+  { id: 1, user: 'Chidi Okafor', plan: 'basic', bank: 'GTBank', account: '0123456789', amount: 2500, status: 'pending', date: 'Today' },
+  { id: 2, user: 'Amaka Nwosu', plan: 'premium', bank: 'Zenith Bank', account: '9876543210', amount: 5000, status: 'pending', date: 'Today' },
+  { id: 3, user: 'Tunde Balogun', plan: 'basic', bank: 'First Bank', account: '3456789012', amount: 3000, status: 'approved', date: 'Yesterday' },
+];
+
+// ─── UI COMPONENTS & PRIMITIVES ─────────────────────────────────────────────
+function Badge({ children, color = '#22c55e' }) {
+  return (
+    <span style={{ background: `${color}22`, color, border: `1px solid ${color}55`, borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', display: 'inline-block' }}>
+      {children}
+    </span>
+  );
+}
+
+function Btn({ children, onClick, disabled, variant = 'green', size = 'md', full, style = {} }) {
+  const styles = {
+    green: { bg: 'linear-gradient(135deg, #22c55e, #16a34a)', color: '#000' },
+    gold: { bg: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#000' },
+    purple: { bg: 'linear-gradient(135deg, #a855f7, #7c3aed)', color: '#fff' },
+    ghost: { bg: 'transparent', color: '#22c55e' },
+    danger: { bg: '#ef444422', color: '#ef4444' }
+  };
+  const config = styles[variant] || styles.green;
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`btn-${variant}`}
+      style={{
+        background: disabled ? '#1a2e1a' : config.bg,
+        color: disabled ? '#94a3b8' : config.color,
+        border: variant === 'ghost' ? '1px solid #22c55e' : variant === 'danger' ? '1px solid #ef444444' : 'none',
+        borderRadius: 10, padding: size === 'sm' ? '8px 16px' : '13px 24px', fontWeight: 700, fontSize: size === 'sm' ? 13 : 15,
+        cursor: disabled ? 'not-allowed' : 'pointer', width: full ? '100%' : 'auto', ...style
+      }}>
+      {children}
+    </button>
+  );
+}
+
+function StatCard({ label, value, icon, color = '#22c55e' }) {
+  return (
+    <div className="stat-card" style={{ border: `1px solid ${color}22` }}>
+      <div style={{ fontSize: 26, marginBottom: 6 }}>{icon}</div>
+      <div style={{ color, fontSize: 22, fontWeight: 800 }}>{value}</div>
+      <div style={{ color: 'var(--clr-muted)', fontSize: 12, marginTop: 4 }}>{label}</div>
+    </div>
+  );
+}
+
+function Logo({ size = 'md' }) {
+  const dim = size === 'sm' ? 28 : 40;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ background: 'linear-gradient(135deg, #22c55e, #f59e0b)', borderRadius: 10, width: dim, height: dim, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: '#000', fontSize: dim * 0.5 }}>9</div>
+      <span style={{ fontWeight: 900, fontSize: dim * 0.5, color: '#22c55e' }}>9jaWatchers</span>
+    </div>
+  );
+}
+
+// ─── TASK CARD ENGINE ────────────────────────────────────────────────────────
+function TaskCard({ task, onComplete, globalUserTasksState }) {
+  const isInitiallyDone = globalUserTasksState?.[task.id] || false;
+  const [state, setState] = useState(isInitiallyDone ? 'done' : 'idle');
+  const [secs, setSecs] = useState(50);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    if (globalUserTasksState?.[task.id]) {
+      setState('done');
+    }
+  }, [globalUserTasksState, task.id]);
+
+  const startTask = () => {
+    window.open(task.url, '_blank');
+    setState('counting');
+    let currentSecs = 50;
+    timerRef.current = setInterval(() => {
+      currentSecs--;
+      setSecs(currentSecs);
+      if (currentSecs <= 0) {
+        clearInterval(timerRef.current);
+        setState('done');
+        onComplete(task.id, task.reward);
+      }
+    }, 1000);
+  };
+
+  useEffect(() => () => clearInterval(timerRef.current), []);
+
+  const themeColor = TASK_COLOR[task.type] || '#22c55e';
+  const isCompleted = state === 'done';
+
+  return (
+    <div className="fade-in" style={{
+      background: 'var(--bg-card)', borderRadius: 14,
+      border: `1px solid ${isCompleted ? '#22c55e44' : 'var(--border-color)'}`,
+      borderLeft: `4px solid ${isCompleted ? '#22c55e' : themeColor}`,
+      padding: '16px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14,
+      opacity: isCompleted ? 0.65 : 1
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 22 }}>{TASK_ICON[task.type]}</div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.title}</div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <Badge color={themeColor}>{task.type}</Badge>
+            <Badge color="#f59e0b">+{naira(task.reward)}</Badge>
+          </div>
+        </div>
+      </div>
+      <div>
+        {isCompleted ? (
+          <span style={{ color: '#22c55e', fontWeight: 700, fontSize: 14 }}>✓ Credited</span>
+        ) : state === 'idle' ? (
+          <Btn size="sm" onClick={startTask}>Start</Btn>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <div className="timer-circle" style={{ background: '#f59e0b11', border: '2px solid #f59e0b' }}>
+              <span style={{ color: '#f59e0b', fontWeight: 900, fontSize: 16 }}>{secs}s</span>
+            </div>
+            <div style={{ width: 60, height: 4, background: '#1a2e1a', borderRadius: 4, overflow: 'hidden' }}>
+              <div className="progress-bar" style={{ width: `${((50 - secs) / 50) * 100}%`, height: '100%', background: '#f59e0b' }} />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── SIDEBAR NAVIGATION ──────────────────────────────────────────────────────
+function Sidebar({ items, active, setPage, plan, onLogout, onUpgradeTrigger, pendingWithdrawalsCount }) {
+  return (
+    <div className="sidebar" style={{ width: 240, background: 'var(--bg-card)', borderRight: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', height: '100vh', flexShrink: 0 }}>
+      <div style={{ padding: '24px 20px', borderBottom: '1px solid var(--border-color)' }}>
+        <Logo size="sm" />
+        <div style={{ marginTop: 18, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 36, height: 36, borderRadius: '50%', background: plan === 'basic' ? '#22c55e33' : plan === 'admin' ? '#ef444433' : '#a855f733', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: plan === 'basic' ? '#22c55e' : plan === 'admin' ? '#ef4444' : '#a855f7' }}>
+            {plan === 'admin' ? 'A' : 'O'}
+          </div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>{plan === 'admin' ? 'System Control' : 'Oluwaseun'}</div>
+            <Badge color={plan === 'basic' ? '#22c55e' : plan === 'admin' ? '#ef4444' : '#a855f7'}>
+              {plan.toUpperCase()}
+            </Badge>
+          </div>
+        </div>
+      </div>
+      <div className="sidebar-scroll" style={{ padding: '16px 12px', flex: 1 }}>
+        {items.map(item => (
+          <div key={item.id} className={`nav-item ${active === item.id ? 'active' : ''}`} onClick={() => setPage(item.id)}>
+            <span style={{ fontSize: 16 }}>{item.icon}</span>
+            <span style={{ flex: 1 }}>{item.label}</span>
+            {item.id === 'withdrawals' && pendingWithdrawalsCount > 0 && (
+              <span style={{ background: '#ef4444', color: '#fff', borderRadius: 10, padding: '2px 8px', fontSize: 11, fontWeight: 900 }}>{pendingWithdrawalsCount}</span>
+            )}
+          </div>
+        ))}
+      </div>
+      <div style={{ padding: '16px', borderTop: '1px solid var(--border-color)' }}>
+        {plan === 'basic' && (
+          <Btn variant="gold" size="sm" full onClick={onUpgradeTrigger} style={{ marginBottom: 10 }}>⭐ Go Premium</Btn>
+        )}
+        <Btn variant="ghost" size="sm" full onClick={onLogout}>Logout</Btn>
+      </div>
+    </div>
+  );
+}
+
+// ─── LANDING PAGE ─────────────────────────────────────────────────────────────
+function LandingPage({ setScreen, setPlanSelection }) {
+  return (
+    <div className="fade-in">
+      <nav style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 40px', borderBottom: '1px solid var(--border-color)', position: 'sticky', top: 0, background: 'var(--bg-dark)', zIndex: 100 }}>
+        <Logo />
+        <div style={{ display: 'flex', gap: 12 }}>
+          <Btn variant="ghost" size="sm" onClick={() => setScreen('login')}>Login</Btn>
+          <Btn size="sm" onClick={() => { setPlanSelection(null); setScreen('signup'); }}>Register</Btn>
+        </div>
+      </nav>
+
+      <div style={{ textAlign: 'center', padding: '100px 20px 60px' }}>
+        <div style={{ display: 'inline-block', background: '#f59e0b22', border: '1px solid #f59e0b55', borderRadius: 20, padding: '4px 16px', fontSize: 12, fontWeight: 700, color: '#f59e0b', marginBottom: 24 }}>
+          🇳🇬 Nigeria's Native High-Yield Micro-Task Marketplace
+        </div>
+        <h1 style={{ fontSize: 56, fontWeight: 900, lineHeight: 1.1, marginBottom: 20 }}>
+          Get Paid Real Money <br /><span className="gradient-text">For Every Single Click</span>
+        </h1>
+        <p style={{ color: 'var(--clr-muted)', fontSize: 18, maxWidth: 600, margin: '0 auto 40px', lineHeight: 1.6 }}>
+          Watch interactive local brand media streams, grow targeted business accounts, and leave social engagement feedback to generate immediate cash directly into your bank.
+        </p>
+        <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <Btn onClick={() => { setPlanSelection('premium'); setScreen('signup'); }}>🚀 Explode Earnings (Premium)</Btn>
+          <Btn variant="ghost" onClick={() => document.getElementById('tiers').scrollIntoView({ behavior: 'smooth' })}>View Asset Plans ↓</Btn>
+        </div>
+      </div>
+
+      <div id="tiers" style={{ maxWidth: 900, margin: '0 auto', padding: '60px 20px' }}>
+        <h2 style={{ textAlign: 'center', fontSize: 32, fontWeight: 800, marginBottom: 12 }}>Transparent Framework Contracts</h2>
+        <p style={{ textAlign: 'center', color: 'var(--clr-muted)', fontSize: 15, marginBottom: 48 }}>One-time network entry operational overhead. Zero recurring asset processing fees.</p>
+        <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', justifyContent: 'center' }}>
+          
+          <div className="plan-card">
+            <Badge color="#22c55e">Entry Basic tier</Badge>
+            <div style={{ fontSize: 42, fontWeight: 900, margin: '20px 0 6px' }}>₦4,000</div>
+            <div style={{ color: 'var(--clr-muted)', fontSize: 13, marginBottom: 24 }}>Permanent System Profile Access</div>
+            {['8 high-retention tasks daily', '₦500 baseline welcome credit', '₦500 safe reference allocation payment', 'Automated Paystack digital clearance', 'Direct bank network disbursement pipeline'].map(f => (
+              <div key={f} style={{ display: 'flex', gap: 10, marginBottom: 12, fontSize: 14 }}><span style={{ color: '#22c55e' }}>✓</span>{f}</div>
+            ))}
+            <Btn full style={{ marginTop: 20 }} onClick={() => { setPlanSelection('basic'); setScreen('signup'); }}>Select Basic</Btn>
+          </div>
+
+          <div className="plan-card" style={{ border: '2px solid var(--clr-purple)', position: 'relative' }}>
+            <div style={{ position: 'absolute', top: -14, right: 20, background: 'var(--clr-gold)', color: '#000', fontWeight: 900, fontSize: 11, borderRadius: 20, padding: '4px 14px' }}>MAX VALUE PRO</div>
+            <Badge color="#a855f7">Accelerated Premium tier</Badge>
+            <div style={{ fontSize: 42, fontWeight: 900, margin: '20px 0 6px', color: 'var(--clr-purple)' }}>₦8,000</div>
+            <div style={{ color: 'var(--clr-muted)', fontSize: 13, marginBottom: 24 }}>Full Core System Privileges</div>
+            {['20 expanded premium tasks daily', '₦1,000 baseline welcome credit', '₦1,000 premium reference payment', 'Priority transaction queue processing', 'Unrestricted high-payout task pipeline Access'].map(f => (
+              <div key={f} style={{ display: 'flex', gap: 10, marginBottom: 12, fontSize: 14 }}><span style={{ color: '#a855f7' }}>✓</span>{f}</div>
+            ))}
+            <Btn variant="purple" full style={{ marginTop: 20 }} onClick={() => { setPlanSelection('premium'); setScreen('signup'); }}>Select Premium</Btn>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── AUTHENTICATION FLOW & SYSTEM GATEWAY ─────────────────────────────────────
+function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan }) {
+  const isLogin = mode === 'login';
+  const [step, setStep] = useState(1);
+  const [selectedPlan, setSelectedPlan] = useState(initialSelectedPlan || 'basic');
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '', password: '', ref: '' });
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [paystackSimulated, setPaystackSimulated] = useState(false);
+
+  useEffect(() => {
+    if (initialSelectedPlan) {
+      setSelectedPlan(initialSelectedPlan);
+    }
+  }, [initialSelectedPlan]);
+
+  const handleAuthSubmit = (e) => {
+    e.preventDefault();
+    setIsProcessing(true);
+    setTimeout(() => {
+      setIsProcessing(false);
+      if (isLogin) {
+        if (formData.email.toLowerCase().includes('admin')) onLoginSuccess('admin');
+        else if (formData.email.toLowerCase().includes('premium')) onLoginSuccess('premium');
+        else onLoginSuccess('basic');
+      } else {
+        setStep(2); // Advance to Paystack processing gateway interface simulation
+      }
+    }, 1000);
+  };
+
+  const handlePaystackExecute = () => {
+    setPaystackSimulated(true);
+    setIsProcessing(true);
+    setTimeout(() => {
+      setIsProcessing(false);
+      setPaystackSimulated(false);
+      onLoginSuccess(selectedPlan);
+    }, 2000);
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div className="fade-in" style={{ width: '100%', maxWidth: 460, background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 24, padding: 40 }}>
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <Logo />
+        </div>
+
+        {step === 1 ? (
+          <form onSubmit={handleAuthSubmit}>
+            <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 24, textAlign: 'center' }}>
+              {isLogin ? 'Access Portal Entrance' : 'Deploy Core Earning Identity'}
+            </h2>
+            {!isLogin && (
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 6 }}>Legal Full Name</label>
+                <input required type="text" className="withdraw-input" placeholder="e.g., Oluwaseun Ogunseye" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+              </div>
+            )}
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 6 }}>System Network Email</label>
+              <input required type="email" className="withdraw-input" placeholder="you@example.com" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+            </div>
+            {!isLogin && (
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 6 }}>Active Phone Number</label>
+                <input required type="text" className="withdraw-input" placeholder="08012345678" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+              </div>
+            )}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 6 }}>Account Access Key Token (Password)</label>
+              <input required type="password" className="withdraw-input" placeholder="••••••••" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+            </div>
+            
+            <Btn full disabled={isProcessing}>{isProcessing ? 'Validating State Token...' : isLogin ? 'Authorize Entry' : 'Advance To Payment Clearance'}</Btn>
+            
+            <p style={{ textAlign: 'center', marginTop: 20, fontSize: 14, color: 'var(--clr-muted)' }}>
+              {isLogin ? "Need a platform tracking slot? " : "Already verified? "}
+              <span style={{ color: 'var(--clr-green)', cursor: 'pointer', fontWeight: 700 }} onClick={() => setScreen(isLogin ? 'signup' : 'login')}>
+                {isLogin ? 'Register Profile' : 'Authenticate Portal Login'}
+              </span>
+            </p>
+            <div style={{ marginTop: 20, padding: '12px', background: 'var(--bg-dark)', borderRadius: 10, fontSize: 11, color: 'var(--clr-muted)', textAlign: 'center', border: '1px dashed var(--border-color)' }}>
+              💡 Quick Sandbox Routing Accounts:<br />
+              <strong style={{color:'var(--clr-red)'}}>admin@9jawatchers.com</strong> (Admin Control Panel View)<br />
+              <strong style={{color:'var(--clr-purple)'}}>premium@9jawatchers.com</strong> (Bypass directly to Premium view)<br />
+              Any standard email routing automatically initiates a basic profile structure.
+            </div>
+          </form>
+        ) : (
+          <div className="fade-in">
+            {paystackSimulated ? (
+              <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                <div style={{ display: 'inline-block', width: 40, height: 40, border: '4px solid #3bb75e33', borderTopColor: '#3bb75e', borderRadius: '50%', animation: 'pulse 1s infinite' }} />
+                <h3 style={{ fontSize: 18, fontWeight: 800, marginTop: 20, color: '#3bb75e' }}>Securing Paystack Processing Engine Layer...</h3>
+                <p style={{ color: 'var(--clr-muted)', fontSize: 13, marginTop: 8 }}>Communicating financial ledger data securely.</p>
+              </div>
+            ) : (
+              <div>
+                <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 8, textAlign: 'center' }}>Secure Payment Node Interface</h3>
+                <p style={{ color: 'var(--clr-muted)', fontSize: 13, textAlign: 'center', marginBottom: 24 }}>Paystack Merchant System Clearing Integration</p>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
+                  <div style={{ padding: 16, background: 'var(--bg-dark)', borderRadius: 12, border: selectedPlan === 'basic' ? '2px solid var(--clr-green)' : '1px solid var(--border-color)', cursor: 'pointer' }} onClick={() => setSelectedPlan('basic')}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800 }}>
+                      <span>Basic Membership Settlement</span>
+                      <span style={{ color: 'var(--clr-green)' }}>₦4,000</span>
+                    </div>
+                  </div>
+                  <div style={{ padding: 16, background: 'var(--bg-dark)', borderRadius: 12, border: selectedPlan === 'premium' ? '2px solid var(--clr-purple)' : '1px solid var(--border-color)', cursor: 'pointer' }} onClick={() => setSelectedPlan('premium')}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800 }}>
+                      <span>Premium Accelerated Contract</span>
+                      <span style={{ color: 'var(--clr-purple)' }}>₦8,000</span>
+                    </div>
+                  </div>
+                </div>
+
+                <Btn full variant={selectedPlan === 'premium' ? 'purple' : 'green'} onClick={handlePaystackExecute}>
+                  Complete ₦{selectedPlan === 'basic' ? '4,000' : '8,000'} Sandbox Clearance
+                </Btn>
+                <div style={{ textAlign: 'center', marginTop: 16 }}>
+                  <span style={{ color: 'var(--clr-muted)', cursor: 'pointer', fontSize: 13 }} onClick={() => setStep(1)}>← Modify Base Configurations</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── MAIN USER WORKSPACE DASHBOARD ───────────────────────────────────────────
+function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, userBalance, setUserBalance, globalUserTasksState, setGlobalUserTasksState, setWithdrawalsList }) {
+  const [page, setPage] = useState('dashboard');
+  const isPremium = plan === 'premium';
+  
+  // Filter active operations relative to profile contract scope clearance rules
+  const executableTasks = globalTasksList.filter(t => t.plan === 'both' || t.plan === plan);
+  
+  const [withdrawalForm, setWithdrawalForm] = useState({ bank: '', account: '', name: '', amount: '' });
+  const [withdrawalSuccess, setWithdrawalSuccess] = useState(false);
+  const [showActiveUpgradeModal, setShowActiveUpgradeModal] = useState(false);
+  const [historyLog, setHistoryLog] = useState([
+    { label: 'System Contract Activation Verification Bonus', amount: isPremium ? 1000 : 500, type: 'credit', timestamp: 'System Epoch' }
+  ]);
+
+  const profileRefCode = `9JW-${isPremium ? 'PREM' : 'BASC'}-2026`;
+  const completedCount = executableTasks.filter(t => globalUserTasksState[t.id]).length;
+  const earningsAccumulatedToday = executableTasks.filter(t => globalUserTasksState[t.id]).reduce((sum, t) => sum + t.reward, 0);
+
+  const handleTaskRewardExecution = (taskId, compensation) => {
+    setGlobalUserTasksState(prev => ({ ...prev, [taskId]: true }));
+    setUserBalance(prev => prev + compensation);
+    const resolvedTaskObject = executableTasks.find(t => t.id === taskId);
+    setHistoryLog(prev => [
+      { label: `Execution: ${resolvedTaskObject?.title.substring(0, 30)}...`, amount: compensation, type: 'credit', timestamp: 'Just Now' },
+      ...prev
+    ]);
+  };
+
+  const submitWithdrawalRequest = (e) => {
+    e.preventDefault();
+    const targetedAmountValue = Number(withdrawalForm.amount);
+    if (targetedAmountValue < 2000 || targetedAmountValue > userBalance) return;
+
+    setUserBalance(prev => prev - targetedAmountValue);
+    const newRequestPayload = {
+      id: Date.now(),
+      user: 'Oluwaseun Ogunseye',
+      plan,
+      bank: withdrawalForm.bank,
+      account: withdrawalForm.account,
+      amount: targetedAmountValue,
+      status: 'pending',
+      date: 'Today'
+    };
+
+    setWithdrawalsList(prev => [newRequestPayload, ...prev]);
+    setHistoryLog(prev => [
+      { label: `Direct Pipeline Withdrawal (${withdrawalForm.bank})`, amount: targetedAmountValue, type: 'debit', timestamp: 'Pending Verification' },
+      ...prev
+    ]);
+    setWithdrawalSuccess(true);
+  };
+
+  const navItems = [
+    { id: 'dashboard', icon: '🏠', label: 'Main Workspace' },
+    { id: 'tasks', icon: '📋', label: `Active Task Engine (${completedCount}/${executableTasks.length})` },
+    { id: 'withdraw', icon: '💳', label: 'Direct Disbursement' },
+    { id: 'referrals', icon: '👥', label: 'Reference Nodes' },
+    { id: 'history', icon: '📊', label: 'System Ledger' }
+  ];
+
+  return (
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+      <Sidebar items={navItems} active={page} setPage={setPage} plan={plan} onLogout={onLogout} onUpgradeTrigger={() => setShowActiveUpgradeModal(true)} />
+
+      {/* MODAL SYSTEM OVERLAYS */}
+      {showActiveUpgradeModal && (
+        <div className="modal-overlay">
+          <div className="fade-in" style={{ background: 'var(--bg-card)', border: '2px solid var(--clr-gold)', borderRadius: 24, padding: 40, maxWidth: 420, width: '100%' }}>
+            <h3 style={{ fontSize: 22, fontWeight: 900, marginBottom: 12, textAlign: 'center' }}>Elevate System Access Privileges</h3>
+            <p style={{ color: 'var(--clr-muted)', fontSize: 14, textAlign: 'center', marginBottom: 24, lineHeight: 1.5 }}>
+              Scale up execution algorithms immediately to open 20 maximum high-yield structural tasks daily.
+            </p>
+            <Btn variant="gold" full onClick={() => window.location.reload()}>Re-initialize Terminal with Paystack Activation</Btn>
+            <Btn variant="ghost" full size="sm" style={{ marginTop: 10 }} onClick={() => setShowActiveUpgradeModal(false)}>Terminate Overlay</Btn>
+          </div>
+        </div>
+      )}
+
+      {/* CORE FRAME LAYOUT */}
+      <div className="main-scroll main-content" style={{ flex: 1, padding: 40 }}>
+        
+        {page === 'dashboard' && (
+          <div className="fade-in">
+            <div style={{ marginBottom: 32 }}>
+              <h1 style={{ fontSize: 28, fontWeight: 900, marginBottom: 6 }}>Welcome back Operator, Oluwaseun 👋</h1>
+              <p style={{ color: 'var(--clr-muted)', fontSize: 14 }}>Real-time core network operational micro-task matrix interface status.</p>
+            </div>
+
+            <div style={{ display: 'flex', gap: 20, marginBottom: 32, flexWrap: 'wrap' }}>
+              <StatCard label="Liquid Verified Balance" value={naira(userBalance)} icon="💰" color="var(--clr-gold)" />
+              <StatCard label="Pipeline Output Today" value={naira(earningsAccumulatedToday)} icon="📈" color="var(--clr-green)" />
+              <StatCard label="Task Execution Index" value={`${completedCount} / ${executableTasks.length}`} icon="⚡" color="var(--clr-blue)" />
+            </div>
+
+            <div style={{ background: 'var(--bg-card)', borderRadius: 16, padding: 24, border: '1px solid var(--border-color)', marginBottom: 32 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, marginBottom: 12 }}>
+                <span>Daily Task Progress Index</span>
+                <span style={{ color: 'var(--clr-green)' }}>{Math.round((completedCount / executableTasks.length) * 100 || 0)}% Complete</span>
+              </div>
+              <div style={{ height: 8, background: 'var(--bg-dark)', borderRadius: 4, overflow: 'hidden' }}>
+                <div style={{ width: `${(completedCount / executableTasks.length) * 100}%`, height: '100%', background: 'linear-gradient(90deg, var(--clr-green), var(--clr-gold))', transition: 'width 0.4s' }} />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <Btn onClick={() => setPage('tasks')}>📋 Access Active Task Engine</Btn>
+              <Btn variant="ghost" onClick={() => setPage('withdraw')}>Disburse Profits</Btn>
+            </div>
+          </div>
+        )}
+
+        {page === 'tasks' && (
+          <div className="fade-in">
+            <div style={{ marginBottom: 24 }}>
+              <h1 style={{ fontSize: 24, fontWeight: 900, marginBottom: 6 }}>Task Execution Core Engine</h1>
+              <p style={{ color: 'var(--clr-muted)', fontSize: 14 }}>Engage link routing target -> Maintain system interface for 50 absolute seconds -> Rewards push automatically into system ledger nodes.</p>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {executableTasks.map(t => (
+                <TaskCard key={t.id} task={t} onComplete={handleTaskRewardExecution} globalUserTasksState={globalUserTasksState} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {page === 'withdraw' && (
+          <div className="fade-in">
+            <h1 style={{ fontSize: 24, fontWeight: 900, marginBottom: 6 }}>Direct Settlement Node Pipeline</h1>
+            <p style={{ color: 'var(--clr-muted)', fontSize: 14, marginBottom: 32 }}>Automated clearance distribution channels across registered regional banks.</p>
+
+            {withdrawalSuccess ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px', background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border-color)' }}>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
+                <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 8 }}>Ledger Disbursement Dispatched</h3>
+                <p style={{ color: 'var(--clr-muted)', fontSize: 14, marginBottom: 24 }}>System admin validation executing over network protocols. Clearing cycle concludes within 24 hours.</p>
+                <Btn onClick={() => { setWithdrawalSuccess(false); setWithdrawalForm({ bank: '', account: '', name: '', amount: '' }); }}>Request New Allocation Routing</Btn>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                <form onSubmit={submitWithdrawalRequest} style={{ flex: 2, minWidth: 300, background: 'var(--bg-card)', padding: 28, borderRadius: 16, border: '1px solid var(--border-color)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
+                    <span style={{ color: 'var(--clr-muted)' }}>Maximum Liquidation Volatility:</span>
+                    <span style={{ fontWeight: 900, color: 'var(--clr-gold)' }}>{naira(userBalance)}</span>
+                  </div>
+                  
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 6 }}>Settlement Target Institution (Bank)</label>
+                    <select required className="withdraw-input" value={withdrawalForm.bank} onChange={e => setWithdrawalForm({...withdrawalForm, bank: e.target.value})}>
+                      <option value="">Select Target Channel Platform</option>
+                      <option value="GTBank">Guaranty Trust Bank (GTBank)</option>
+                      <option value="Zenith">Zenith National Bank</option>
+                      <option value="Access">Access Bank International</option>
+                      <option value="UBA">United Bank for Africa (UBA)</option>
+                    </select>
+                  </div>
+
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 6 }}>10-Digit NUBAN Account Identity</label>
+                    <input required type="text" pattern="[0-9]{10}" className="withdraw-input" placeholder="0123456789" value={withdrawalForm.account} onChange={e => setWithdrawalForm({...withdrawalForm, account: e.target.value})} />
+                  </div>
+
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 6 }}>Verified Beneficiary Account Name String</label>
+                    <input required type="text" className="withdraw-input" placeholder="Oluwaseun Ogunseye" value={withdrawalForm.name} onChange={e => setWithdrawalForm({...withdrawalForm, name: e.target.value})} />
+                  </div>
+
+                  <div style={{ marginBottom: 20 }}>
+                    <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 6 }}>Disbursement Volume (Minimum ₦2,000 Threshold Rules Apply)</label>
+                    <input required type="number" min="2000" max={userBalance} className="withdraw-input" placeholder="2000" value={withdrawalForm.amount} onChange={e => setWithdrawalForm({...withdrawalForm, amount: e.target.value})} />
+                  </div>
+
+                  <Btn full type="submit" disabled={userBalance < 2000 || Number(withdrawalForm.amount) > userBalance}>Initiate Core Verification Settlement Link</Btn>
+                </form>
+                
+                <div style={{ flex: 1, minWidth: 240, background: 'var(--bg-card)', padding: 24, borderRadius: 16, border: '1px solid var(--border-color)', height: 'fit-content' }}>
+                  <h4 style={{ fontWeight: 800, marginBottom: 14 }}>Core Compliance Protocols</h4>
+                  <div style={{ fontSize: 13, color: 'var(--clr-muted)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div>• Floor Boundary Minimum Limit: <strong>₦2,000</strong></div>
+                    <div>• Baseline Processing Window: <strong>24 Working Hours Max</strong></div>
+                    <div>• Financial Clearing Protocol: <strong>Paystack Processing Direct Layer</strong></div>
+                    <div>• Network Gas Protocol Fees: <strong>₦0.00 (Completely Waived)</strong></div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {page === 'referrals' && (
+          <div className="fade-in">
+            <h1 style={{ fontSize: 24, fontWeight: 900, marginBottom: 6 }}>Reference Node Link Registry</h1>
+            <p style={{ color: 'var(--clr-muted)', fontSize: 14, marginBottom: 32 }}>Distribute unique protocol referral identification tags to clear immediate tracking payments per activation.</p>
+            
+            <div style={{ background: 'linear-gradient(135deg, var(--bg-card), #142519)', padding: 32, borderRadius: 16, border: '1px solid #22c55e33', marginBottom: 24 }}>
+              <span style={{ fontSize: 12, color: 'var(--clr-muted)' }}>Your Unique Protocol Signature Tag</span>
+              <div style={{ display: 'flex', gap: 12, marginTop: 8, marginBottom: 24 }}>
+                <input readOnly type="text" className="withdraw-input" style={{ fontSize: 18, fontWeight: 900, color: 'var(--clr-green)', letterSpacing: 2 }} value={profileRefCode} />
+                <Btn size="sm" onClick={() => alert('Reference Link Signature Copied to Dashboard Clipboard Buffer.')}>Copy Tag</Btn>
+              </div>
+
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                <StatCard label="Total Nodes Recruited" value="0 Registered Users" icon="👥" color="var(--clr-blue)" />
+                <StatCard label="Reference Generated Yield" value="₦0.00" icon="💰" color="var(--clr-gold)" />
+                <StatCard label="Active Contract Allocation Payment Rate" value={isPremium ? '₦1,000 / node' : '₦500 / node'} icon="🎯" color="var(--clr-green)" />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {page === 'history' && (
+          <div className="fade-in">
+            <h1 style={{ fontSize: 24, fontWeight: 900, marginBottom: 20 }}>System Ledger Real-time Analytics</h1>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {historyLog.map((log, index) => (
+                <div key={index} style={{ background: 'var(--bg-card)', padding: '16px 20px', borderRadius: 12, border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{log.label}</div>
+                    <div style={{ fontSize: 12, color: 'var(--clr-muted)', marginTop: 4 }}>{log.timestamp}</div>
+                  </div>
+                  <span style={{ fontWeight: 900, color: log.type === 'credit' ? 'var(--clr-green)' : 'var(--clr-red)' }}>
+                    {log.type === 'credit' ? '+' : '-'}{naira(log.amount)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}
+
+// ─── ADMINSTRATION CONTROL WORKSPACE TERMINAL ─────────────────────────────────
+function AdminDashboard({ onLogout, globalTasksList, setGlobalTasksList, userManagementRows, setUserManagementRows, withdrawalsList, setWithdrawalsList }) {
+  const [page, setPage] = useState('overview');
+  
+  // Task Creation Dynamic Buffer State
+  const [taskFormInput, setTaskFormInput] = useState({ type: 'video', title: '', url: '', reward: '', plan: 'both' });
+  const [taskNoticeAlert, setTaskNoticeAlert] = useState(false);
+
+  const pendingSettlementRequests = withdrawalsList.filter(w => w.status === 'pending');
+  const processedCountApproved = withdrawalsList.filter(w => w.status === 'approved').length;
+
+  const dispatchActionApprove = (id) => {
+    setWithdrawalsList(prev => prev.map(w => w.id === id ? { ...w, status: 'approved' } : w));
+  };
+
+  const dispatchActionReject = (id) => {
+    setWithdrawalsList(prev => prev.map(w => w.id === id ? { ...w, status: 'rejected' } : w));
+  };
+
+  const dispatchActionRemoveTask = (id) => {
+    setGlobalTasksList(prev => prev.filter(t => t.id !== id));
+  };
+
+  const dispatchActionSuspendUser = (id) => {
+    setUserManagementRows(prev => prev.map(u => u.id === id ? { ...u, status: u.status === 'active' ? 'suspended' : 'active' } : u));
+  };
+
+  const executeTaskFormSubmission = (e) => {
+    e.preventDefault();
+    if (!taskFormInput.title || !taskFormInput.url || !taskFormInput.reward) return;
+
+    const builtTaskStructure = {
+      id: Date.now(),
+      type: taskFormInput.type,
+      title: taskFormInput.title,
+      url: taskFormInput.url,
+      reward: Number(taskFormInput.reward),
+      plan: taskFormInput.plan
+    };
+
+    setGlobalTasksList(prev => [...prev, builtTaskStructure]);
+    setTaskNoticeAlert(true);
+    setTaskFormInput({ type: 'video', title: '', url: '', reward: '', plan: 'both' });
+    setTimeout(() => setTaskNoticeAlert(false), 3000);
+  };
+
+  const adminNavStructure = [
+    { id: 'overview', icon: '📊', label: 'Overview Matrix' },
+    { id: 'tasks', icon: '📋', label: 'Task Deployment Rig' },
+    { id: 'withdrawals', icon: '💳', label: 'Disbursement Queues' },
+    { id: 'users', icon: '👥', label: 'User Matrix Management' }
+  ];
+
+  return (
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+      <Sidebar items={adminNavStructure} active={page} setPage={setPage} plan="admin" onLogout={onLogout} pendingWithdrawalsCount={pendingSettlementRequests.length} />
+
+      <div className="main-scroll main-content" style={{ flex: 1, padding: 40 }}>
+        
+        {page === 'overview' && (
+          <div className="fade-in">
+            <div style={{ marginBottom: 32 }}>
+              <h1 style={{ fontSize: 26, fontWeight: 900, marginBottom: 6 }}>Global Strategy Control Command</h1>
+              <p style={{ color: 'var(--clr-muted)', fontSize: 14 }}>Real-time micro-economic system telemetry indicators.</p>
+            </div>
+
+            <div style={{ display: 'flex', gap: 16, marginBottom: 32, flexWrap: 'wrap' }}>
+              <StatCard label="Registered Profile Assets" value={String(userManagementRows.length + 1280)} icon="👥" color="var(--clr-blue)" />
+              <StatCard label="Awaiting Settlement Action" value={String(pendingSettlementRequests.length)} icon="⏳" color="var(--clr-gold)" />
+              <StatCard label="Live System Engine Payouts" value="₦2.48M" icon="💸" color="var(--clr-green)" />
+              <StatCard label="Active Production Tasks Loaded" value={String(globalTasksList.length)} icon="📋" color="var(--clr-purple)" />
+            </div>
+
+            <div style={{ background: 'var(--bg-card)', padding: 24, borderRadius: 16, border: '1px solid var(--border-color)' }}>
+              <h3 style={{ fontWeight: 800, fontSize: 16, marginBottom: 16 }}>⚠️ Critical Task Authorization Clearance Queue ({pendingSettlementRequests.length})</h3>
+              {pendingSettlementRequests.length === 0 ? (
+                <p style={{ color: 'var(--clr-muted)', textAlign: 'center', padding: '20px 0', fontSize: 14 }}>All processing pipelines reporting absolute execution clearance synchronizations.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {pendingSettlementRequests.map(w => (
+                    <div key={w.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 14, borderBottom: '1px solid var(--border-color)', flexWrap: 'wrap', gap: 12 }}>
+                      <div>
+                        <div style={{ fontWeight: 700 }}>{w.user} ({w.plan.toUpperCase()})</div>
+                        <div style={{ fontSize: 12, color: 'var(--clr-muted)', marginTop: 2 }}>{w.bank} Network • ACC: {w.account}</div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <span style={{ fontWeight: 900, color: 'var(--clr-gold)' }}>{naira(w.amount)}</span>
+                        <Btn size="sm" onClick={() => dispatchActionApprove(w.id)}>Clear Transfer</Btn>
+                        <Btn variant="danger" size="sm" onClick={() => dispatchActionReject(w.id)}>Deny</Btn>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {page === 'tasks' && (
+          <div className="fade-in">
+            <div style={{ marginBottom: 24 }}>
+              <h1 style={{ fontSize: 24, fontWeight: 900, marginBottom: 6 }}>Micro-Task Deployment Engine Rig</h1>
+              <p style={{ color: 'var(--clr-muted)', fontSize: 14 }}>Inject brand monetization protocols downstream seamlessly into specific user contract pipelines.</p>
+            </div>
+
+            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+              <form onSubmit={executeTaskFormSubmission} style={{ flex: 1, minWidth: 300, background: 'var(--bg-card)', padding: 24, borderRadius: 16, border: '1px solid var(--border-color)', height: 'fit-content' }}>
+                <h3 style={{ fontWeight: 800, marginBottom: 16 }}>Deploy Fresh Asset Node</h3>
+                
+                {taskNoticeAlert && (
+                  <div style={{ background: '#22c55e22', border: '1px solid var(--clr-green)', color: 'var(--clr-green)', padding: 12, borderRadius: 8, fontSize: 13, marginBottom: 16 }}>
+                    ✓ Configuration compiled and deployed successfully to cluster nodes.
+                  </div>
+                )}
+
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 4 }}>Protocol Engine Mode</label>
+                  <select className="withdraw-input" value={taskFormInput.type} onChange={e => setTaskFormInput({...taskFormInput, type: e.target.value})}>
+                    <option value="video">Stream Video Advertising Ad Block</option>
+                    <option value="follow">Target Account Core Audience Growth</option>
+                    <option value="like">Like Sentiment Data Verification</option>
+                    <option value="comment">Detailed Feedback Audit Input</option>
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 4 }}>Brand Action Title String</label>
+                  <input required type="text" className="withdraw-input" placeholder="e.g., Watch MTN 2026 Promo Advert" value={taskFormInput.title} onChange={e => setTaskFormInput({...taskFormInput, title: e.target.value})} />
+                </div>
+
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 4 }}>Destination Routing String (URL Target)</label>
+                  <input required type="url" className="withdraw-input" placeholder="https://example.com" value={taskFormInput.url} onChange={e => setTaskFormInput({...taskFormInput, url: e.target.value})} />
+                </div>
+
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 4 }}>Micro-Allocation Reward Token Volume (₦ Value)</label>
+                  <input required type="number" className="withdraw-input" placeholder="150" value={taskFormInput.reward} onChange={e => setTaskFormInput({...taskFormInput, reward: e.target.value})} />
+                </div>
+
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 4 }}>Contract Cluster Restriction Scope</label>
+                  <select className="withdraw-input" value={taskFormInput.plan} onChange={e => setTaskFormInput({...taskFormInput, plan: e.target.value})}>
+                    <option value="both">Unrestricted Global Release (Basic + Premium)</option>
+                    <option value="basic">Isolate to Basic Framework Tier Exclusively</option>
+                    <option value="premium">Isolate to Accelerated Premium Allocation Group</option>
+                  </select>
+                </div>
+
+                <Btn full type="submit">Compile & BroadCast Task</Btn>
+              </form>
+
+              <div style={{ flex: 1.5, minWidth: 300 }}>
+                <h3 style={{ fontWeight: 800, marginBottom: 16 }}>Live Runtime Active System Arrays ({globalTasksList.length})</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 540, overflowY: 'auto', paddingRight: 4 }}>
+                  {globalTasksList.map(t => (
+                    <div key={t.id} style={{ background: 'var(--bg-card)', padding: 16, borderRadius: 12, border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title}</div>
+                        <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                          <Badge color={TASK_COLOR[t.type]}>{t.type}</Badge>
+                          <Badge color="var(--clr-gold)">₦{t.reward}</Badge>
+                          <Badge color="var(--clr-muted)">Target: {t.plan}</Badge>
+                        </div>
+                      </div>
+                      <Btn variant="danger" size="sm" onClick={() => dispatchActionRemoveTask(t.id)}>Kill Node</Btn>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {page === 'withdrawals' && (
+          <div className="fade-in">
+            <h1 style={{ fontSize: 24, fontWeight: 900, marginBottom: 6 }}>Settlement Allocation Ledger Pipelines</h1>
+            <p style={{ color: 'var(--clr-muted)', fontSize: 14, marginBottom: 32 }}>Authoritatively route Paystack execution APIs or refuse transaction records.</p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {withdrawalsList.map(w => (
+                <div key={w.id} style={{ background: 'var(--bg-card)', padding: 20, borderRadius: 14, border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontWeight: 700 }}>{w.user}</span>
+                      <Badge color={w.plan === 'basic' ? 'var(--clr-green)' : 'var(--clr-purple)'}>{w.plan}</Badge>
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--clr-muted)', marginTop: 4 }}>{w.bank} Network • Account Node ID: {w.account}</div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <span style={{ fontWeight: 900, fontSize: 18, color: 'var(--clr-gold)' }}>{naira(w.amount)}</span>
+                    {w.status === 'pending' ? (
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <Btn size="sm" onClick={() => dispatchActionApprove(w.id)}>Clear Pipeline</Btn>
+                        <Btn variant="danger" size="sm" onClick={() => dispatchActionReject(w.id)}>Reject</Btn>
+                      </div>
+                    ) : (
+                      <Badge color={w.status === 'approved' ? 'var(--clr-green)' : 'var(--clr-red)'}>
+                        {w.status.toUpperCase()}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {page === 'users' && (
+          <div className="fade-in">
+            <h1 style={{ fontSize: 24, fontWeight: 900, marginBottom: 6 }}>Platform Profile Registry Security Cells</h1>
+            <p style={{ color: 'var(--clr-muted)', fontSize: 14, marginBottom: 32 }}>Oversee profile balances and dynamically drop active states to preserve data stability metrics.</p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {userManagementRows.map(u => (
+                <div key={u.id} style={{ background: 'var(--bg-card)', padding: 18, borderRadius: 14, border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontWeight: 700, color: u.status === 'suspended' ? 'var(--clr-red)' : 'var(--clr-text)' }}>{u.name}</span>
+                      {u.status === 'suspended' && <Badge color="var(--clr-red)">SUSPENDED</Badge>}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--clr-muted)', marginTop: 4 }}>{u.email} • Tracking Node Active Since {u.joined}</div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                    <Badge color={u.plan === 'basic' ? 'var(--clr-green)' : 'var(--clr-purple)'}>{u.plan}</Badge>
+                    <span style={{ fontWeight: 700, color: 'var(--clr-gold)' }}>{naira(u.balance)}</span>
+                    <span style={{ fontSize: 13, color: 'var(--clr-muted)' }}>Tasks: {u.tasks}</span>
+                    <Btn variant={u.status === 'active' ? 'danger' : 'green'} size="sm" onClick={() => dispatchActionSuspendUser(u.id)}>
+                      {u.status === 'active' ? 'Suspend Operator' : 'Reinstate Node'}
+                    </Btn>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}
+
+// ─── SYSTEM ANCHOR APPARATUS ROOT ENGINE ─────────────────────────────────────
+function App() {
+  const [screen, setScreen] = useState('landing');
+  const [activeRoleContext, setActiveRoleContext] = useState(null);
+  const [routingPlanOverride, setRoutingPlanOverride] = useState(null);
+
+  // Unified global system data pools state configurations
+  const [globalTasksList, setGlobalTasksList] = useState(INITIAL_TASKS);
+  const [userManagementRows, setUserManagementRows] = useState(INITIAL_USERS);
+  const [withdrawalsList, setWithdrawalsList] = useState(INITIAL_WITHDRAWALS);
+  
+  // Specific Current Running Sandbox User State
+  const [userBalance, setUserBalance] = useState(500);
+  const [globalUserTasksState, setGlobalUserTasksState] = useState({});
+
+  const handlePortalLoginResolution = (resolvedRole) => {
+    setActiveRoleContext(resolvedRole);
+    if (resolvedRole === 'premium') {
+      setUserBalance(1000); // Setup standard baseline configuration asset conditions
+    } else if (resolvedRole === 'basic') {
+      setUserBalance(500);
+    }
+    setScreen('dashboard-portal');
+  };
+
+  const handlePortalLogoutSequence = () => {
+    setActiveRoleContext(null);
+    setGlobalUserTasksState({});
+    setScreen('landing');
+  };
+
+  return (
+    <div>
+      {screen === 'landing' && <LandingPage setScreen={setScreen} setPlanSelection={setRoutingPlanOverride} />}
+      {(screen === 'login' || screen === 'signup') && (
+        <img style={{display:'none'}} src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1' height='1'></svg>" onLoad={() => {}} />
+      )}
+      {screen === 'login' && <AuthPage mode="login" setScreen={setScreen} onLoginSuccess={handlePortalLoginResolution} initialSelectedPlan={routingPlanOverride} />}
+      {screen === 'signup' && <AuthPage mode="signup" setScreen={setScreen} onLoginSuccess={handlePortalLoginResolution} initialSelectedPlan={routingPlanOverride} />}
+      
+      {screen === 'dashboard-portal' && (
+        activeRoleContext === 'admin' ? (
+          <AdminDashboard 
+            onLogout={handlePortalLogoutSequence} 
+            globalTasksList={globalTasksList} 
+            setGlobalTasksList={setGlobalTasksList} 
+            userManagementRows={userManagementRows} 
+            setUserManagementRows={setUserManagementRows} 
+            withdrawalsList={withdrawalsList} 
+            setWithdrawalsList={setWithdrawalsList} 
+          />
+        ) : (
+          <UserDashboard 
+            plan={activeRoleContext} 
+            onLogout={handlePortalLogoutSequence} 
+            globalTasksList={globalTasksList}
+            setGlobalTasksList={setGlobalTasksList}
+            userBalance={userBalance}
+            setUserBalance={setUserBalance}
+            globalUserTasksState={globalUserTasksState}
+            setGlobalUserTasksState={setGlobalUserTasksState}
+            setWithdrawalsList={setWithdrawalsList}
+          />
+        )
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
