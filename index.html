@@ -360,30 +360,51 @@ function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan }) {
     }
   }, [initialSelectedPlan]);
 
-  const handleAuthSubmit = (e) => {
+ const handleAuthSubmit = (e) => {
     e.preventDefault();
     setIsProcessing(true);
+    
     setTimeout(() => {
       setIsProcessing(false);
+      const inputEmail = formData.email.toLowerCase();
+      const inputPassword = formData.password;
+
       if (isLogin) {
-        if (formData.email.toLowerCase().includes('admin')) onLoginSuccess('admin');
-        else if (formData.email.toLowerCase().includes('premium')) onLoginSuccess('premium');
-        else onLoginSuccess('basic');
+        // 1. Strict Administrator Authentication Clearance
+        if (inputEmail === 'admin@naijawatchers.com' && inputPassword === 'Passme2026@@@!') {
+          alert("Administrative Access Granted. Initializing Strategy Control Command...");
+          onLoginSuccess('admin');
+          return;
+        }
+
+        // 2. Regular User Login Verification via localStorage
+        const savedUserRecord = localStorage.getItem(`user_${inputEmail}`);
+        
+        if (savedUserRecord) {
+          const parsedUser = JSON.parse(savedUserRecord);
+          if (parsedUser.paid === true) {
+            alert(`Welcome back! Authenticating secure session...`);
+            onLoginSuccess(parsedUser.plan);
+          } else {
+            alert("Access Denied: Payment clearance verification failed.");
+          }
+        } else {
+          alert("No active paid account found for this email. Please register and complete the Paystack clearance first.");
+        }
       } else {
-        setStep(2); // Advance to Paystack processing gateway interface simulation
+        // Advance registration to the Paystack selection window
+        setStep(2); 
       }
     }, 1000);
   };
 
   const handlePaystackExecute = () => {
-    // 1. Calculate transaction amount in Kobo (Paystack requires Kobo: ₦1 = 100 Kobo)
     const exactAmountInKobo = (selectedPlan === 'premium' ? 8000 : 4000) * 100;
     
-    // 2. Initialize the Paystack Popup engine
     try {
       const paystack = new PaystackPop();
       paystack.newTransaction({
-        key: 'pk_live_56cd68f5adb0e165c34545bee318900fcd3505e3', // Replace with your Public Key
+        key: 'pk_live_56cd68f5adb0e165c34545bee318900fcd3505e3', // Replace with your live Public Key
         email: formData.email,
         amount: exactAmountInKobo,
         currency: 'NGN',
@@ -394,8 +415,19 @@ function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan }) {
           ]
         },
         onSuccess: (transaction) => {
-          // Executed only if payment passes through safely
-          alert(`Clearance Successful! Reference token: ${transaction.reference}`);
+          alert(`Clearance Successful! Reference: ${transaction.reference}`);
+          
+          // ─── CRITICAL STEP: MARK USER AS PAID ───
+          // Save a record in the browser's storage mapping this email to their chosen plan
+          const userData = {
+            email: formData.email.toLowerCase(),
+            plan: selectedPlan,
+            paid: true,
+            reference: transaction.reference
+          };
+          localStorage.setItem(`user_${formData.email.toLowerCase()}`, JSON.stringify(userData));
+          
+          // Grant access to the dashboard
           onLoginSuccess(selectedPlan);
         },
         onCancel: () => {
@@ -406,10 +438,9 @@ function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan }) {
         }
       });
     } catch (err) {
-      alert("Failed to connect to Paystack payment nodes. Ensure script tag is loaded properly.");
+      alert("Failed to connect to Paystack payment nodes.");
     }
   };
-
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <div className="fade-in" style={{ width: '100%', maxWidth: 460, background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 24, padding: 40 }}>
