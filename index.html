@@ -835,11 +835,45 @@ function AdminDashboard({ onLogout, globalTasksList, setGlobalTasksList, userMan
               <p style={{ color: 'var(--clr-muted)', fontSize: 14 }}>Real-time micro-economic system telemetry indicators.</p>
             </div>
 
+            {/* REAL-TIME DYNAMIC STATS MATRIX */}
             <div style={{ display: 'flex', gap: 16, marginBottom: 32, flexWrap: 'wrap' }}>
-              <StatCard label="Registered Profile Assets" value={String(userManagementRows.length + 1280)} icon="👥" color="var(--clr-blue)" />
-              <StatCard label="Awaiting Settlement Action" value={String(pendingSettlementRequests.length)} icon="⏳" color="var(--clr-gold)" />
-              <StatCard label="Live System Engine Payouts" value="₦2.48M" icon="💸" color="var(--clr-green)" />
-              <StatCard label="Active Production Tasks Loaded" value={String(globalTasksList.length)} icon="📋" color="var(--clr-purple)" />
+              
+              {/* 1. Count actual users registered in state */}
+              <StatCard 
+                label="Registered Profile Assets" 
+                value={String(userManagementRows.length)} 
+                icon="👥" 
+                color="var(--clr-blue)" 
+              />
+              
+              {/* 2. Count actual pending withdrawals in queue */}
+              <StatCard 
+                label="Awaiting Settlement Action" 
+                value={String(pendingSettlementRequests.length)} 
+                icon="⏳" 
+                color="var(--clr-gold)" 
+              />
+              
+              {/* 3. Calculate sum of real approved payouts dynamically */}
+              <StatCard 
+                label="Live System Engine Payouts" 
+                value={naira(
+                  withdrawalsList
+                    .filter(w => w.status === 'approved')
+                    .reduce((sum, w) => sum + w.amount, 0)
+                )} 
+                icon="💸" 
+                color="var(--clr-green)" 
+              />
+              
+              {/* 4. Count total live structural tasks */}
+              <StatCard 
+                label="Active Production Tasks Loaded" 
+                value={String(globalTasksList.length)} 
+                icon="📋" 
+                color="var(--clr-purple)" 
+              />
+
             </div>
 
             <div style={{ background: 'var(--bg-card)', padding: 24, borderRadius: 16, border: '1px solid var(--border-color)' }}>
