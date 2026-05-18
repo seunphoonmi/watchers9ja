@@ -626,7 +626,7 @@ function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, us
 
             <div style={{ display: 'flex', gap: 20, marginBottom: 32, flexWrap: 'wrap' }}>
               <StatCard label="Liquid Verified Balance" value={naira(userBalance)} icon="💰" color="var(--clr-gold)" />
-              <StatCard label="Pipeline Output Today" value={naira(earningsAccumulatedToday)} icon="📈" color="var(--clr-green)" />
+              <StatCard label="Today Earnings" value={naira(earningsAccumulatedToday)} icon="📈" color="var(--clr-green)" />
               <StatCard label="Task Execution Index" value={`${completedCount} / ${executableTasks.length}`} icon="⚡" color="var(--clr-blue)" />
             </div>
 
