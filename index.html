@@ -393,7 +393,6 @@ function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan }) {
     } catch (err) {
       alert("Failed to connect to Paystack payment nodes. Ensure script tag is loaded properly.");
     }
-  };
         setStep(2); // Advance to Paystack processing gateway interface simulation
       }
     }, 1000);
