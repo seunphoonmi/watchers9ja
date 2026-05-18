@@ -482,12 +482,14 @@ function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan }) {
                 {isLogin ? 'Register Profile' : 'Authenticate Portal Login'}
               </span>
             </p>
-            <div style={{ marginTop: 20, padding: '12px', background: 'var(--bg-dark)', borderRadius: 10, fontSize: 11, color: 'var(--clr-muted)', textAlign: 'center', border: '1px dashed var(--border-color)' }}>
-              💡 Quick Sandbox Routing Accounts:<br />
-              <strong style={{color:'var(--clr-red)'}}>admin@9jawatchers.com</strong> (Admin Control Panel View)<br />
-              <strong style={{color:'var(--clr-purple)'}}>premium@9jawatchers.com</strong> (Bypass directly to Premium view)<br />
-              Any standard email routing automatically initiates a basic profile structure.
-            </div>
+            <div style={{ marginTop: 24, padding: '16px', background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(245, 158, 11, 0.05))', borderRadius: 12, border: '1px solid rgba(34, 197, 94, 0.2)', textAlign: 'center' }}>
+  <div style={{ fontWeight: 800, color: 'var(--clr-green)', fontSize: 14, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+    ⚡ Earn With Every Click
+  </div>
+  <p style={{ color: 'var(--clr-muted)', fontSize: 12, lineHeight: 1.5 }}>
+    Join thousands of Nigerians monetizing their social media presence. Secure your contract, complete micro-tasks daily, and withdraw real cash directly to your bank account instantly.
+  </p>
+</div>
           </form>
         ) : (
           <div className="fade-in">
