@@ -346,7 +346,7 @@ function LandingPage({ setScreen, setPlanSelection }) {
 }
 
 // ─── AUTHENTICATION FLOW & SYSTEM GATEWAY ─────────────────────────────────────
-function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan }) {
+function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan, onRegisterSuccess }) {
   const isLogin = mode === 'login';
   const [step, setStep] = useState(1);
   const [selectedPlan, setSelectedPlan] = useState(initialSelectedPlan || 'basic');
@@ -417,17 +417,33 @@ function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan }) {
         onSuccess: (transaction) => {
           alert(`Clearance Successful! Reference: ${transaction.reference}`);
           
-          // ─── CRITICAL STEP: MARK USER AS PAID ───
-          // Save a record in the browser's storage mapping this email to their chosen plan
-          const userData = {
+          // 1. Create a structured user object from the form fields
+          const newUserProfile = {
+            id: Date.now(), // Unique identifier
+            name: formData.name,
+            email: formData.email.toLowerCase(),
+            plan: selectedPlan,
+            balance: selectedPlan === 'premium' ? 1000 : 500, // Add welcome bonus directly to balance
+            joined: 'Just Now',
+            tasks: 0,
+            refs: 0,
+            status: 'active'
+          };
+
+          // 2. Save to localStorage for returning login verification
+          localStorage.setItem(`user_${formData.email.toLowerCase()}`, JSON.stringify({
             email: formData.email.toLowerCase(),
             plan: selectedPlan,
             paid: true,
             reference: transaction.reference
-          };
-          localStorage.setItem(`user_${formData.email.toLowerCase()}`, JSON.stringify(userData));
+          }));
           
-          // Grant access to the dashboard
+          // 3. CRITICAL ACTION: Push user details directly up into the Admin Dashboard data array
+          if (onRegisterSuccess) {
+            onRegisterSuccess(newUserProfile);
+          }
+          
+          // Grant active dashboard access
           onLoginSuccess(selectedPlan);
         },
         onCancel: () => {
@@ -1083,7 +1099,15 @@ function App() {
         <img style={{display:'none'}} src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1' height='1'></svg>" onLoad={() => {}} />
       )}
       {screen === 'login' && <AuthPage mode="login" setScreen={setScreen} onLoginSuccess={handlePortalLoginResolution} initialSelectedPlan={routingPlanOverride} />}
-      {screen === 'signup' && <AuthPage mode="signup" setScreen={setScreen} onLoginSuccess={handlePortalLoginResolution} initialSelectedPlan={routingPlanOverride} />}
+      if (screen === 'signup')  return (
+  <AuthPage 
+    mode="signup" 
+    setScreen={setScreen} 
+    onLoginSuccess={handlePortalLoginResolution} 
+    initialSelectedPlan={routingPlanOverride} 
+    onRegisterSuccess={(newUserObj) => setUserManagementRows(prev => [newUserObj, ...prev])}
+  />
+);
       
       {screen === 'dashboard-portal' && (
         activeRoleContext === 'admin' ? (
