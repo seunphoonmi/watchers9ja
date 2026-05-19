@@ -874,8 +874,8 @@ function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, us
 
         {page === 'withdraw' && (
           <div className="fade-in">
-            <h1 style={{ fontSize: 24, fontWeight: 900, marginBottom: 6 }}>Routing Liquidity Settlement Queue</h1>
-            <p style={{ color: 'var(--clr-muted)', fontSize: 14, marginBottom: 32 }}>Directly route gathered earnings profiles across registered regional banks.</p>
+            <h1 style={{ fontSize: 24, fontWeight: 900, marginBottom: 6 }}>Withdrawal Requests</h1>
+            <p style={{ color: 'var(--clr-muted)', fontSize: 14, marginBottom: 32 }}>Request withdrawal</p>
 
             {withdrawalSuccess ? (
               <div style={{ textAlign: 'center', padding: '40px 20px', background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border-color)' }}>
@@ -917,11 +917,11 @@ function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, us
                     <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 6 }}>Deduction Target Amount (₦)</label>
                     <input required type="number" min={2000} max={userBalance} className="withdraw-input" placeholder="Minimum 2,000" value={withdrawalForm.amount} onChange={e => setWithdrawalForm({...withdrawalForm, amount: e.target.value})} />
                   </div>
-                  <Btn full type="submit" disabled={userBalance < 2000}>Compile & Route Settlement Pipeline</Btn>
+                  <Btn full type="submit" disabled={userBalance < 2000}>Submit Request</Btn>
                 </form>
 
                 <div style={{ flex: 1, minWidth: 240, background: '#f59e0b0b', border: '1px solid #f59e0b22', padding: 24, borderRadius: 16, height: 'fit-content' }}>
-                  <h4 style={{ color: 'var(--clr-gold)', fontWeight: 800, marginBottom: 12, fontSize: 14, textTransform: 'uppercase' }}>Disbursement Clearing Protocols</h4>
+                  <h4 style={{ color: 'var(--clr-gold)', fontWeight: 800, marginBottom: 12, fontSize: 14, textTransform: 'uppercase' }}>withdrawal Procedure</h4>
                   <div style={{ fontSize: 13, color: 'var(--clr-muted)', display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <div>• Minimum Limit: <strong>₦2,000</strong></div>
                     <div>• Processing Window: <strong>24 Working Hours Max</strong></div>
