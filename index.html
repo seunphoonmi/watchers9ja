@@ -78,7 +78,11 @@
 
 <script type="text/babel">
 const { useState, useEffect, useRef } = React;
+// Replace these dummy strings with your actual values from the Supabase API Settings tab
+const SUPABASE_URL = "https://wvvggkqsohzmbypdjexc.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_xO31WDsqpJT8UcLZAxZzzA_W-8r8BRJ";
 
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // ─── CONSTANTS & CONFIG ───────────────────────────────────────────────────────
 const naira = (n) => `₦${Number(n || 0).toLocaleString()}`;
 const TASK_ICON  = { video: '▶', follow: '👤', like: '❤️', comment: '💬' };
@@ -374,55 +378,60 @@ function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan, onRegi
     if (initialSelectedPlan) setSelectedPlan(initialSelectedPlan);
   }, [initialSelectedPlan]);
 
-  const handleAuthSubmit = (e) => {
+ const handleAuthSubmit = async (e) => {
     e.preventDefault();
-    setErrorMsg('');
     setIsProcessing(true);
     
-    setTimeout(() => {
+    const inputEmail = formData.email.toLowerCase();
+    const inputPassword = formData.password;
+
+    // 1. Check for hardcoded Master Admin Account Credentials
+    if (isLogin && inputEmail === 'admin@naijawatchers.com' && inputPassword === 'Passme2026@@@!') {
       setIsProcessing(false);
-      const inputEmail = formData.email.toLowerCase().trim();
-      const inputPassword = formData.password;
+      alert("Administrative Access Granted.");
+      onLoginSuccess('admin');
+      return;
+    }
 
+    try {
       if (isLogin) {
-        // 1. Admin Authentication
-        if (inputEmail === 'admin@naijawatchers.com' && inputPassword === 'Passme2026@@@!') {
-          onLoginSuccess('admin', { name: 'Administrator', email: inputEmail, plan: 'admin' });
+        // ─── CLOUD LOGIN PIPELINE ───
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: inputEmail,
+          password: inputPassword,
+        });
+
+        if (error) throw error;
+
+        // Fetch their database profile record to verify their plan and payment status
+        const { data: profile, error: profileErr } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+
+        if (profileErr || !profile) {
+          alert("Profile synchronization record mismatch.");
           return;
         }
 
-        // 2. Regular User Login — check saved profile
-        const savedProfile = store.get(STORAGE_KEYS.userProfile(inputEmail));
-        
-        if (!savedProfile) {
-          setErrorMsg('No registered account found for this email. Please sign up first.');
-          return;
-        }
-        if (!savedProfile.paid) {
-          setErrorMsg('Account payment not completed. Please register and pay via Paystack.');
-          return;
-        }
-        if (savedProfile.password !== inputPassword) {
-          setErrorMsg('Incorrect password. Please try again.');
+        if (!profile.paid) {
+          alert("Access Denied: Account registration detected but activation payment is missing.");
           return;
         }
 
-        // Success — load their full profile
-        onLoginSuccess(savedProfile.plan, savedProfile);
+        alert("Access Authenticated securely across cloud servers!");
+        onLoginSuccess(profile.plan);
       } else {
-        // Sign up: validate then proceed to payment
-        if (!formData.name.trim()) { setErrorMsg('Please enter your full name.'); return; }
-        if (formData.password.length < 6) { setErrorMsg('Password must be at least 6 characters.'); return; }
-        
-        // Check for duplicate email
-        const existing = store.get(STORAGE_KEYS.userProfile(inputEmail));
-        if (existing && existing.paid) {
-          setErrorMsg('This email is already registered. Please login instead.');
-          return;
-        }
+        // ─── CLOUD SIGNUP INITIAL ENTRY ───
+        // Slide standard signup users right over to the Paystack modal window setup view
         setStep(2);
       }
-    }, 900);
+    } catch (err) {
+      alert(`Authentication Error: ${err.message || err}`);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handlePaystackExecute = () => {
@@ -441,31 +450,46 @@ function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan, onRegi
             { display_name: "Plan Target", variable_name: "plan_target", value: selectedPlan }
           ]
         },
-        onSuccess: (transaction) => {
-          const welcomeBonus = selectedPlan === 'premium' ? 1000 : 500;
-          const joinDate = new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'short' });
+       onSuccess: async (transaction) => {
+          alert(`Clearance Successful! Reference: ${transaction.reference}`);
+          setIsProcessing(true);
 
-          // Full user profile saved to localStorage
-          const fullProfile = {
-            id: Date.now(),
-            name: formData.name.trim(),
-            email: formData.email.toLowerCase().trim(),
-            phone: formData.phone.trim(),
-            plan: selectedPlan,
-            password: formData.password,
-            paid: true,
-            balance: welcomeBonus,
-            joined: joinDate,
-            tasks: 0,
-            refs: 0,
-            status: 'active',
-            tasksState: {},
-            historyLog: [
-              { label: 'Welcome Bonus — Contract Activation', amount: welcomeBonus, type: 'credit', timestamp: joinDate }
-            ],
-            paystackRef: transaction.reference
-          };
+          try {
+            // 1. Provision user identity inside Supabase Central Authentication engine
+            const { data: authData, error: authError } = await supabase.auth.signUp({
+              email: formData.email.toLowerCase(),
+              password: formData.password,
+            });
 
+            if (authError) throw authError;
+
+            // 2. Generate their real-time profile row entry inside our SQL table
+            const defaultStartingBalance = selectedPlan === 'premium' ? 1000 : 500;
+            const { error: profileError } = await supabase
+              .from('profiles')
+              .insert([
+                {
+                  id: authData.user.id,
+                  name: formData.name,
+                  email: formData.email.toLowerCase(),
+                  plan: selectedPlan,
+                  balance: defaultStartingBalance,
+                  paid: true,
+                  status: 'active'
+                }
+              ]);
+
+            if (profileError) throw profileError;
+
+            alert("Cloud database synced completely! Redirecting to workspace...");
+            onLoginSuccess(selectedPlan);
+
+          } catch (err) {
+            alert(`Database synchronization failed post-payment: ${err.message}`);
+          } finally {
+            setIsProcessing(false);
+          }
+        },
           // Save individual user profile
           store.set(STORAGE_KEYS.userProfile(formData.email), fullProfile);
 
