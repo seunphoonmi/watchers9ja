@@ -82,6 +82,22 @@ const { useState, useEffect, useRef } = React;
 const naira = (n) => `₦${Number(n || 0).toLocaleString()}`;
 const TASK_ICON  = { video: '▶', follow: '👤', like: '❤️', comment: '💬' };
 const TASK_COLOR = { video: '#ef4444', follow: '#3b82f6', like: '#ec4899', comment: '#f59e0b' };
+const STORAGE_KEYS = {
+  USERS_REGISTRY: '9jw_users_registry',
+  WITHDRAWALS: '9jw_withdrawals',
+  TASKS: '9jw_tasks',
+  userProfile: (email) => `9jw_user_${email.toLowerCase()}`
+};
+
+// ─── STORAGE HELPERS ─────────────────────────────────────────────────────────
+const store = {
+  get: (key, fallback = null) => {
+    try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; }
+  },
+  set: (key, value) => {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+  }
+};
 
 // Global system initial task states
 const INITIAL_TASKS = [
@@ -108,10 +124,9 @@ const INITIAL_TASKS = [
 ];
 
 const INITIAL_USERS = [
-  { id: 1, name: 'Oluwaseun Ogunseye', email: 'seun@email.com', plan: 'premium', balance: 14500, joined: '10 May', tasks: 18, refs: 3, status: 'active' },
-  { id: 2, name: 'Chidi Okafor', email: 'chidi@email.com', plan: 'basic', balance: 3200, joined: '11 May', tasks: 6, refs: 1, status: 'active' },
-  { id: 3, name: 'Amaka Nwosu', email: 'amaka@email.com', plan: 'premium', balance: 22000, joined: '08 May', tasks: 20, refs: 7, status: 'active' },
-  { id: 4, name: 'Tunde Balogun', email: 'tunde@email.com', plan: 'basic', balance: 1800, joined: '12 May', tasks: 5, refs: 0, status: 'suspended' },
+  { id: 1, name: 'Chidi Okafor', email: 'chidi@email.com', plan: 'basic', balance: 3200, joined: '11 May', tasks: 6, refs: 1, status: 'active' },
+  { id: 2, name: 'Amaka Nwosu', email: 'amaka@email.com', plan: 'premium', balance: 22000, joined: '08 May', tasks: 20, refs: 7, status: 'active' },
+  { id: 3, name: 'Tunde Balogun', email: 'tunde@email.com', plan: 'basic', balance: 1800, joined: '12 May', tasks: 5, refs: 0, status: 'suspended' },
 ];
 
 const INITIAL_WITHDRAWALS = [
@@ -129,7 +144,7 @@ function Badge({ children, color = '#22c55e' }) {
   );
 }
 
-function Btn({ children, onClick, disabled, variant = 'green', size = 'md', full, style = {} }) {
+function Btn({ children, onClick, disabled, variant = 'green', size = 'md', full, style = {}, type = 'button' }) {
   const styles = {
     green: { bg: 'linear-gradient(135deg, #22c55e, #16a34a)', color: '#000' },
     gold: { bg: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#000' },
@@ -140,6 +155,7 @@ function Btn({ children, onClick, disabled, variant = 'green', size = 'md', full
   const config = styles[variant] || styles.green;
   return (
     <button
+      type={type}
       onClick={onClick}
       disabled={disabled}
       className={`btn-${variant}`}
@@ -183,9 +199,7 @@ function TaskCard({ task, onComplete, globalUserTasksState }) {
   const timerRef = useRef(null);
 
   useEffect(() => {
-    if (globalUserTasksState?.[task.id]) {
-      setState('done');
-    }
+    if (globalUserTasksState?.[task.id]) setState('done');
   }, [globalUserTasksState, task.id]);
 
   const startTask = () => {
@@ -247,17 +261,18 @@ function TaskCard({ task, onComplete, globalUserTasksState }) {
 }
 
 // ─── SIDEBAR NAVIGATION ──────────────────────────────────────────────────────
-function Sidebar({ items, active, setPage, plan, onLogout, onUpgradeTrigger, pendingWithdrawalsCount }) {
+function Sidebar({ items, active, setPage, plan, onLogout, onUpgradeTrigger, pendingWithdrawalsCount, currentUser }) {
+  const displayName = plan === 'admin' ? 'System Control' : (currentUser?.name?.split(' ')[0] || 'Member');
   return (
     <div className="sidebar" style={{ width: 240, background: 'var(--bg-card)', borderRight: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', height: '100vh', flexShrink: 0 }}>
       <div style={{ padding: '24px 20px', borderBottom: '1px solid var(--border-color)' }}>
         <Logo size="sm" />
         <div style={{ marginTop: 18, display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ width: 36, height: 36, borderRadius: '50%', background: plan === 'basic' ? '#22c55e33' : plan === 'admin' ? '#ef444433' : '#a855f733', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: plan === 'basic' ? '#22c55e' : plan === 'admin' ? '#ef4444' : '#a855f7' }}>
-            {plan === 'admin' ? 'A' : 'O'}
+            {displayName.charAt(0).toUpperCase()}
           </div>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>{plan === 'admin' ? 'System Control' : 'Oluwaseun'}</div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>{displayName}</div>
             <Badge color={plan === 'basic' ? '#22c55e' : plan === 'admin' ? '#ef4444' : '#a855f7'}>
               {plan.toUpperCase()}
             </Badge>
@@ -314,7 +329,7 @@ function LandingPage({ setScreen, setPlanSelection }) {
       </div>
 
       <div id="tiers" style={{ maxWidth: 900, margin: '0 auto', padding: '60px 20px' }}>
-        <h2 style={{ textAlign: 'center', fontSize: 32, fontWeight: 800, marginBottom: 12 }}>Explore our EARNING options here </h2>
+        <h2 style={{ textAlign: 'center', fontSize: 32, fontWeight: 800, marginBottom: 12 }}>Explore our EARNING options here</h2>
         <p style={{ textAlign: 'center', color: 'var(--clr-muted)', fontSize: 15, marginBottom: 48 }}>One-time network entry operational overhead. Zero recurring asset processing fees.</p>
         <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', justifyContent: 'center' }}>
           
@@ -346,56 +361,67 @@ function LandingPage({ setScreen, setPlanSelection }) {
 }
 
 // ─── AUTHENTICATION FLOW & SYSTEM GATEWAY ─────────────────────────────────────
-function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan, onRegisterSuccess }) {
+function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan, onRegisterNewUser }) {
   const isLogin = mode === 'login';
   const [step, setStep] = useState(1);
   const [selectedPlan, setSelectedPlan] = useState(initialSelectedPlan || 'basic');
-  const [formData, setFormData] = useState({ name: '', email: '', phone: '', password: '', ref: '' });
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '', password: '' });
   const [isProcessing, setIsProcessing] = useState(false);
-  const [paystackSimulated, setPaystackSimulated] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
-    if (initialSelectedPlan) {
-      setSelectedPlan(initialSelectedPlan);
-    }
+    if (initialSelectedPlan) setSelectedPlan(initialSelectedPlan);
   }, [initialSelectedPlan]);
 
- const handleAuthSubmit = (e) => {
+  const handleAuthSubmit = (e) => {
     e.preventDefault();
+    setErrorMsg('');
     setIsProcessing(true);
     
     setTimeout(() => {
       setIsProcessing(false);
-      const inputEmail = formData.email.toLowerCase();
+      const inputEmail = formData.email.toLowerCase().trim();
       const inputPassword = formData.password;
 
       if (isLogin) {
-        // 1. Strict Administrator Authentication Clearance
+        // 1. Admin Authentication
         if (inputEmail === 'admin@naijawatchers.com' && inputPassword === 'Passme2026@@@!') {
-          alert("Administrative Access Granted. Initializing Strategy Control Command...");
-          onLoginSuccess('admin');
+          onLoginSuccess('admin', { name: 'Administrator', email: inputEmail, plan: 'admin' });
           return;
         }
 
-        // 2. Regular User Login Verification via localStorage
-        const savedUserRecord = localStorage.getItem(`user_${inputEmail}`);
+        // 2. Regular User Login — check saved profile
+        const savedProfile = store.get(STORAGE_KEYS.userProfile(inputEmail));
         
-        if (savedUserRecord) {
-          const parsedUser = JSON.parse(savedUserRecord);
-          if (parsedUser.paid === true) {
-            alert(`Welcome back! Authenticating secure session...`);
-            onLoginSuccess(parsedUser.plan);
-          } else {
-            alert("Access Denied: Payment clearance verification failed.");
-          }
-        } else {
-          alert("No active paid account found for this email. Please register and complete the Paystack clearance first.");
+        if (!savedProfile) {
+          setErrorMsg('No registered account found for this email. Please sign up first.');
+          return;
         }
+        if (!savedProfile.paid) {
+          setErrorMsg('Account payment not completed. Please register and pay via Paystack.');
+          return;
+        }
+        if (savedProfile.password !== inputPassword) {
+          setErrorMsg('Incorrect password. Please try again.');
+          return;
+        }
+
+        // Success — load their full profile
+        onLoginSuccess(savedProfile.plan, savedProfile);
       } else {
-        // Advance registration to the Paystack selection window
-        setStep(2); 
+        // Sign up: validate then proceed to payment
+        if (!formData.name.trim()) { setErrorMsg('Please enter your full name.'); return; }
+        if (formData.password.length < 6) { setErrorMsg('Password must be at least 6 characters.'); return; }
+        
+        // Check for duplicate email
+        const existing = store.get(STORAGE_KEYS.userProfile(inputEmail));
+        if (existing && existing.paid) {
+          setErrorMsg('This email is already registered. Please login instead.');
+          return;
+        }
+        setStep(2);
       }
-    }, 1000);
+    }, 900);
   };
 
   const handlePaystackExecute = () => {
@@ -404,7 +430,7 @@ function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan, onRegi
     try {
       const paystack = new PaystackPop();
       paystack.newTransaction({
-        key: 'pk_live_56cd68f5adb0e165c34545bee318900fcd3505e3', // Replace with your live Public Key
+        key: 'pk_live_56cd68f5adb0e165c34545bee318900fcd3505e3',
         email: formData.email,
         amount: exactAmountInKobo,
         currency: 'NGN',
@@ -415,48 +441,82 @@ function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan, onRegi
           ]
         },
         onSuccess: (transaction) => {
-          alert(`Clearance Successful! Reference: ${transaction.reference}`);
-          
-          // 1. Create a structured user object from the form fields
-          const newUserProfile = {
-            id: Date.now(), // Unique identifier
-            name: formData.name,
-            email: formData.email.toLowerCase(),
+          const welcomeBonus = selectedPlan === 'premium' ? 1000 : 500;
+          const joinDate = new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'short' });
+
+          // Full user profile saved to localStorage
+          const fullProfile = {
+            id: Date.now(),
+            name: formData.name.trim(),
+            email: formData.email.toLowerCase().trim(),
+            phone: formData.phone.trim(),
             plan: selectedPlan,
-            balance: selectedPlan === 'premium' ? 1000 : 500, // Add welcome bonus directly to balance
-            joined: 'Just Now',
+            password: formData.password,
+            paid: true,
+            balance: welcomeBonus,
+            joined: joinDate,
             tasks: 0,
             refs: 0,
-            status: 'active'
+            status: 'active',
+            tasksState: {},
+            historyLog: [
+              { label: 'Welcome Bonus — Contract Activation', amount: welcomeBonus, type: 'credit', timestamp: joinDate }
+            ],
+            paystackRef: transaction.reference
           };
 
-          // 2. Save to localStorage for returning login verification
-          localStorage.setItem(`user_${formData.email.toLowerCase()}`, JSON.stringify({
-            email: formData.email.toLowerCase(),
-            plan: selectedPlan,
-            paid: true,
-            reference: transaction.reference
-          }));
-          
-          // 3. CRITICAL ACTION: Push user details directly up into the Admin Dashboard data array
-          if (onRegisterSuccess) {
-            onRegisterSuccess(newUserProfile);
+          // Save individual user profile
+          store.set(STORAGE_KEYS.userProfile(formData.email), fullProfile);
+
+          // Add to global users registry (for admin dashboard)
+          const registry = store.get(STORAGE_KEYS.USERS_REGISTRY, []);
+          const alreadyExists = registry.find(u => u.email === fullProfile.email);
+          if (!alreadyExists) {
+            registry.push({
+              id: fullProfile.id,
+              name: fullProfile.name,
+              email: fullProfile.email,
+              plan: fullProfile.plan,
+              balance: fullProfile.balance,
+              joined: fullProfile.joined,
+              tasks: 0,
+              refs: 0,
+              status: 'active'
+            });
+            store.set(STORAGE_KEYS.USERS_REGISTRY, registry);
           }
-          
-          // Grant active dashboard access
-          onLoginSuccess(selectedPlan);
+
+          // Notify parent App to push new user into admin state
+          if (onRegisterNewUser) {
+            onRegisterNewUser({
+              id: fullProfile.id,
+              name: fullProfile.name,
+              email: fullProfile.email,
+              plan: fullProfile.plan,
+              balance: fullProfile.balance,
+              joined: fullProfile.joined,
+              tasks: 0,
+              refs: 0,
+              status: 'active'
+            });
+          }
+
+          alert(`✅ Payment Successful!\nRef: ${transaction.reference}\n\nWelcome to 9jaWatchers, ${formData.name.split(' ')[0]}!`);
+          onLoginSuccess(selectedPlan, fullProfile);
         },
         onCancel: () => {
-          alert("Payment gateway session terminated by client.");
+          setErrorMsg('Payment was cancelled. Click the button to try again.');
+          setStep(2);
         },
         onError: (error) => {
-          alert(`Gateway Exception Error: ${error.message}`);
+          setErrorMsg(`Payment error: ${error.message}`);
         }
       });
     } catch (err) {
-      alert("Failed to connect to Paystack payment nodes.");
+      setErrorMsg('Failed to connect to Paystack payment gateway.');
     }
   };
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <div className="fade-in" style={{ width: '100%', maxWidth: 460, background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 24, padding: 40 }}>
@@ -469,14 +529,21 @@ function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan, onRegi
             <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 24, textAlign: 'center' }}>
               {isLogin ? 'Access Portal Entrance' : 'Join the WINNING TEAM'}
             </h2>
+
+            {errorMsg && (
+              <div style={{ background: '#ef444422', border: '1px solid #ef444455', color: '#ef4444', padding: '10px 14px', borderRadius: 10, fontSize: 13, marginBottom: 16 }}>
+                ⚠️ {errorMsg}
+              </div>
+            )}
+
             {!isLogin && (
               <div style={{ marginBottom: 16 }}>
-                <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 6 }}> Full Name(Same as Bank account name) </label>
-                <input required type="text" className="withdraw-input" placeholder="e.g., mark ibrahim" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 6 }}>Full Name (Same as Bank account name)</label>
+                <input required type="text" className="withdraw-input" placeholder="e.g., Mark Ibrahim" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
               </div>
             )}
             <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 6 }}>Email Address </label>
+              <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 6 }}>Email Address</label>
               <input required type="email" className="withdraw-input" placeholder="you@example.com" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
             </div>
             {!isLogin && (
@@ -486,63 +553,61 @@ function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan, onRegi
               </div>
             )}
             <div style={{ marginBottom: 20 }}>
-              <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 6 }}> Password </label>
+              <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 6 }}>Password</label>
               <input required type="password" className="withdraw-input" placeholder="••••••••" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
             </div>
             
-            <Btn full disabled={isProcessing}>{isProcessing ? 'Validating State Token...' : isLogin ? 'Authorize Entry' : 'Start Earning Now'}</Btn>
+            <Btn full disabled={isProcessing} type="submit">
+              {isProcessing ? 'Validating...' : isLogin ? 'Authorize Entry' : 'Start Earning Now'}
+            </Btn>
             
             <p style={{ textAlign: 'center', marginTop: 20, fontSize: 14, color: 'var(--clr-muted)' }}>
               {isLogin ? "Need a platform tracking slot? " : "Already verified? "}
-              <span style={{ color: 'var(--clr-green)', cursor: 'pointer', fontWeight: 700 }} onClick={() => setScreen(isLogin ? 'signup' : 'login')}>
+              <span style={{ color: 'var(--clr-green)', cursor: 'pointer', fontWeight: 700 }} onClick={() => { setScreen(isLogin ? 'signup' : 'login'); setErrorMsg(''); }}>
                 {isLogin ? 'Register Profile' : 'Authenticate Portal Login'}
               </span>
             </p>
             <div style={{ marginTop: 24, padding: '16px', background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(245, 158, 11, 0.05))', borderRadius: 12, border: '1px solid rgba(34, 197, 94, 0.2)', textAlign: 'center' }}>
-  <div style={{ fontWeight: 800, color: 'var(--clr-green)', fontSize: 14, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-    ⚡ Earn With Every Click
-  </div>
-  <p style={{ color: 'var(--clr-muted)', fontSize: 12, lineHeight: 1.5 }}>
-    Join thousands of Nigerians monetizing their social media presence. Secure your contract, complete micro-tasks daily, and withdraw real cash directly to your bank account instantly.
-  </p>
-</div>
+              <div style={{ fontWeight: 800, color: 'var(--clr-green)', fontSize: 14, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                ⚡ Earn With Every Click
+              </div>
+              <p style={{ color: 'var(--clr-muted)', fontSize: 12, lineHeight: 1.5 }}>
+                Join thousands of Nigerians monetizing their social media presence. Secure your contract, complete micro-tasks daily, and withdraw real cash directly to your bank account instantly.
+              </p>
+            </div>
           </form>
         ) : (
           <div className="fade-in">
-            {paystackSimulated ? (
-              <div style={{ textAlign: 'center', padding: '40px 0' }}>
-                <div style={{ display: 'inline-block', width: 40, height: 40, border: '4px solid #3bb75e33', borderTopColor: '#3bb75e', borderRadius: '50%', animation: 'pulse 1s infinite' }} />
-                <h3 style={{ fontSize: 18, fontWeight: 800, marginTop: 20, color: '#3bb75e' }}>You are about to be FREE financially...</h3>
-                <p style={{ color: 'var(--clr-muted)', fontSize: 13, marginTop: 8 }}>Communicating financial ledger data securely.</p>
-              </div>
-            ) : (
-              <div>
-                <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 8, textAlign: 'center' }}>Secure your spot </h3>
-                <p style={{ color: 'var(--clr-muted)', fontSize: 13, textAlign: 'center', marginBottom: 24 }}>Paystack Merchant System Clearing Integration</p>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
-                  <div style={{ padding: 16, background: 'var(--bg-dark)', borderRadius: 12, border: selectedPlan === 'basic' ? '2px solid var(--clr-green)' : '1px solid var(--border-color)', cursor: 'pointer' }} onClick={() => setSelectedPlan('basic')}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800 }}>
-                      <span>Basic Membership Settlement</span>
-                      <span style={{ color: 'var(--clr-green)' }}>₦4,000</span>
-                    </div>
-                  </div>
-                  <div style={{ padding: 16, background: 'var(--bg-dark)', borderRadius: 12, border: selectedPlan === 'premium' ? '2px solid var(--clr-purple)' : '1px solid var(--border-color)', cursor: 'pointer' }} onClick={() => setSelectedPlan('premium')}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800 }}>
-                      <span>Premium Accelerated Contract</span>
-                      <span style={{ color: 'var(--clr-purple)' }}>₦8,000</span>
-                    </div>
-                  </div>
-                </div>
-
-                <Btn full variant={selectedPlan === 'premium' ? 'purple' : 'green'} onClick={handlePaystackExecute}>
-                  Complete ₦{selectedPlan === 'basic' ? '4,000' : '8,000'} watchers9ja Clearance
-                </Btn>
-                <div style={{ textAlign: 'center', marginTop: 16 }}>
-                  <span style={{ color: 'var(--clr-muted)', cursor: 'pointer', fontSize: 13 }} onClick={() => setStep(1)}>← Modify Base Configurations</span>
-                </div>
+            <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 8, textAlign: 'center' }}>Secure your spot</h3>
+            <p style={{ color: 'var(--clr-muted)', fontSize: 13, textAlign: 'center', marginBottom: 24 }}>Paystack Merchant System Clearing Integration</p>
+            
+            {errorMsg && (
+              <div style={{ background: '#ef444422', border: '1px solid #ef444455', color: '#ef4444', padding: '10px 14px', borderRadius: 10, fontSize: 13, marginBottom: 16 }}>
+                ⚠️ {errorMsg}
               </div>
             )}
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
+              <div style={{ padding: 16, background: 'var(--bg-dark)', borderRadius: 12, border: selectedPlan === 'basic' ? '2px solid var(--clr-green)' : '1px solid var(--border-color)', cursor: 'pointer' }} onClick={() => setSelectedPlan('basic')}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800 }}>
+                  <span>Basic Membership Settlement</span>
+                  <span style={{ color: 'var(--clr-green)' }}>₦4,000</span>
+                </div>
+              </div>
+              <div style={{ padding: 16, background: 'var(--bg-dark)', borderRadius: 12, border: selectedPlan === 'premium' ? '2px solid var(--clr-purple)' : '1px solid var(--border-color)', cursor: 'pointer' }} onClick={() => setSelectedPlan('premium')}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800 }}>
+                  <span>Premium Accelerated Contract</span>
+                  <span style={{ color: 'var(--clr-purple)' }}>₦8,000</span>
+                </div>
+              </div>
+            </div>
+
+            <Btn full variant={selectedPlan === 'premium' ? 'purple' : 'green'} onClick={handlePaystackExecute}>
+              Complete ₦{selectedPlan === 'basic' ? '4,000' : '8,000'} Watchers9ja Clearance
+            </Btn>
+            <div style={{ textAlign: 'center', marginTop: 16 }}>
+              <span style={{ color: 'var(--clr-muted)', cursor: 'pointer', fontSize: 13 }} onClick={() => { setStep(1); setErrorMsg(''); }}>← Modify Base Configurations</span>
+            </div>
           </div>
         )}
       </div>
@@ -551,54 +616,81 @@ function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan, onRegi
 }
 
 // ─── MAIN USER WORKSPACE DASHBOARD ───────────────────────────────────────────
-function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, userBalance, setUserBalance, globalUserTasksState, setGlobalUserTasksState, setWithdrawalsList }) {
+function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, userBalance, setUserBalance, globalUserTasksState, setGlobalUserTasksState, setWithdrawalsList, currentUser }) {
   const [page, setPage] = useState('dashboard');
   const isPremium = plan === 'premium';
   
-  // Filter active operations relative to profile contract scope clearance rules
   const executableTasks = globalTasksList.filter(t => t.plan === 'both' || t.plan === plan);
   
-  const [withdrawalForm, setWithdrawalForm] = useState({ bank: '', account: '', name: '', amount: '' });
+  const [withdrawalForm, setWithdrawalForm] = useState({ bank: '', account: '', name: currentUser?.name || '', amount: '' });
   const [withdrawalSuccess, setWithdrawalSuccess] = useState(false);
   const [showActiveUpgradeModal, setShowActiveUpgradeModal] = useState(false);
-  const [historyLog, setHistoryLog] = useState([
-    { label: 'System Contract Activation Verification Bonus', amount: isPremium ? 1000 : 500, type: 'credit', timestamp: 'System Epoch' }
-  ]);
+  const [historyLog, setHistoryLog] = useState(() => {
+    // Load history from saved profile if available
+    const saved = store.get(STORAGE_KEYS.userProfile(currentUser?.email || ''));
+    return saved?.historyLog || [
+      { label: 'Welcome Bonus — Contract Activation', amount: isPremium ? 1000 : 500, type: 'credit', timestamp: 'Activation' }
+    ];
+  });
 
-  const profileRefCode = `9JW-${isPremium ? 'PREM' : 'BASC'}-2026`;
+  const profileRefCode = `9JW-${isPremium ? 'PREM' : 'BASC'}-${currentUser?.id?.toString().slice(-4) || '2026'}`;
   const completedCount = executableTasks.filter(t => globalUserTasksState[t.id]).length;
   const earningsAccumulatedToday = executableTasks.filter(t => globalUserTasksState[t.id]).reduce((sum, t) => sum + t.reward, 0);
+
+  // Persist user state on changes
+  useEffect(() => {
+    if (!currentUser?.email) return;
+    const saved = store.get(STORAGE_KEYS.userProfile(currentUser.email)) || {};
+    store.set(STORAGE_KEYS.userProfile(currentUser.email), {
+      ...saved,
+      balance: userBalance,
+      tasksState: globalUserTasksState,
+      historyLog
+    });
+
+    // Update registry entry too
+    const registry = store.get(STORAGE_KEYS.USERS_REGISTRY, []);
+    const idx = registry.findIndex(u => u.email === currentUser.email);
+    if (idx !== -1) {
+      registry[idx] = { ...registry[idx], balance: userBalance, tasks: completedCount };
+      store.set(STORAGE_KEYS.USERS_REGISTRY, registry);
+    }
+  }, [userBalance, globalUserTasksState, historyLog]);
 
   const handleTaskRewardExecution = (taskId, compensation) => {
     setGlobalUserTasksState(prev => ({ ...prev, [taskId]: true }));
     setUserBalance(prev => prev + compensation);
-    const resolvedTaskObject = executableTasks.find(t => t.id === taskId);
+    const resolvedTask = executableTasks.find(t => t.id === taskId);
     setHistoryLog(prev => [
-      { label: `Execution: ${resolvedTaskObject?.title.substring(0, 30)}...`, amount: compensation, type: 'credit', timestamp: 'Just Now' },
+      { label: `Task Completed: ${resolvedTask?.title?.substring(0, 35) || 'Task'}`, amount: compensation, type: 'credit', timestamp: 'Just Now' },
       ...prev
     ]);
   };
 
   const submitWithdrawalRequest = (e) => {
     e.preventDefault();
-    const targetedAmountValue = Number(withdrawalForm.amount);
-    if (targetedAmountValue < 2000 || targetedAmountValue > userBalance) return;
+    const targetedAmount = Number(withdrawalForm.amount);
+    if (targetedAmount < 2000 || targetedAmount > userBalance) return;
 
-    setUserBalance(prev => prev - targetedAmountValue);
-    const newRequestPayload = {
+    setUserBalance(prev => prev - targetedAmount);
+    const newRequest = {
       id: Date.now(),
-      user: 'Oluwaseun Ogunseye',
+      user: currentUser?.name || 'Unknown',
       plan,
       bank: withdrawalForm.bank,
       account: withdrawalForm.account,
-      amount: targetedAmountValue,
+      amount: targetedAmount,
       status: 'pending',
       date: 'Today'
     };
 
-    setWithdrawalsList(prev => [newRequestPayload, ...prev]);
+    setWithdrawalsList(prev => {
+      const updated = [newRequest, ...prev];
+      store.set(STORAGE_KEYS.WITHDRAWALS, updated);
+      return updated;
+    });
     setHistoryLog(prev => [
-      { label: `Direct Pipeline Withdrawal (${withdrawalForm.bank})`, amount: targetedAmountValue, type: 'debit', timestamp: 'Pending Verification' },
+      { label: `Withdrawal Request — ${withdrawalForm.bank}`, amount: targetedAmount, type: 'debit', timestamp: 'Pending Verification' },
       ...prev
     ]);
     setWithdrawalSuccess(true);
@@ -614,15 +706,14 @@ function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, us
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
-      <Sidebar items={navItems} active={page} setPage={setPage} plan={plan} onLogout={onLogout} onUpgradeTrigger={() => setShowActiveUpgradeModal(true)} />
+      <Sidebar items={navItems} active={page} setPage={setPage} plan={plan} onLogout={onLogout} onUpgradeTrigger={() => setShowActiveUpgradeModal(true)} currentUser={currentUser} />
 
-      {/* MODAL SYSTEM OVERLAYS */}
       {showActiveUpgradeModal && (
         <div className="modal-overlay">
           <div className="fade-in" style={{ background: 'var(--bg-card)', border: '2px solid var(--clr-gold)', borderRadius: 24, padding: 40, maxWidth: 420, width: '100%' }}>
             <h3 style={{ fontSize: 22, fontWeight: 900, marginBottom: 12, textAlign: 'center' }}>Elevate System Access Privileges</h3>
             <p style={{ color: 'var(--clr-muted)', fontSize: 14, textAlign: 'center', marginBottom: 24, lineHeight: 1.5 }}>
-              Scale up execution algorithms immediately to open 20 maximum high-yield structural tasks daily.
+              Scale up to unlock 20 maximum high-yield tasks daily.
             </p>
             <Btn variant="gold" full onClick={() => window.location.reload()}>Re-initialize Terminal with Paystack Activation</Btn>
             <Btn variant="ghost" full size="sm" style={{ marginTop: 10 }} onClick={() => setShowActiveUpgradeModal(false)}>Terminate Overlay</Btn>
@@ -630,13 +721,12 @@ function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, us
         </div>
       )}
 
-      {/* CORE FRAME LAYOUT */}
       <div className="main-scroll main-content" style={{ flex: 1, padding: 40 }}>
         
         {page === 'dashboard' && (
           <div className="fade-in">
             <div style={{ marginBottom: 32 }}>
-              <h1 style={{ fontSize: 28, fontWeight: 900, marginBottom: 6 }}>Welcome back Winner 👋</h1>
+              <h1 style={{ fontSize: 28, fontWeight: 900, marginBottom: 6 }}>Welcome back, {currentUser?.name?.split(' ')[0] || 'Winner'} 👋</h1>
               <p style={{ color: 'var(--clr-muted)', fontSize: 14 }}>Real-time core network operational micro-task matrix interface status.</p>
             </div>
 
@@ -657,7 +747,7 @@ function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, us
             </div>
 
             <div style={{ display: 'flex', gap: 12 }}>
-              <Btn onClick={() => setPage('tasks')}>📋 View Active Tasks </Btn>
+              <Btn onClick={() => setPage('tasks')}>📋 View Active Tasks</Btn>
               <Btn variant="ghost" onClick={() => setPage('withdraw')}>Disburse Profits</Btn>
             </div>
           </div>
@@ -667,7 +757,7 @@ function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, us
           <div className="fade-in">
             <div style={{ marginBottom: 24 }}>
               <h1 style={{ fontSize: 24, fontWeight: 900, marginBottom: 6 }}>Task Execution Core Engine</h1>
-              <p style={{ color: 'var(--clr-muted)', fontSize: 14 }}>Engage link routing target -> Maintain system interface for 50 absolute seconds -> Rewards push automatically into system ledger nodes.</p>
+              <p style={{ color: 'var(--clr-muted)', fontSize: 14 }}>Engage link routing target → Maintain system interface for 50 seconds → Rewards push automatically into system ledger nodes.</p>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {executableTasks.map(t => (
@@ -687,13 +777,13 @@ function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, us
                 <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
                 <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 8 }}>Ledger Disbursement Dispatched</h3>
                 <p style={{ color: 'var(--clr-muted)', fontSize: 14, marginBottom: 24 }}>System admin validation executing over network protocols. Clearing cycle concludes within 24 hours.</p>
-                <Btn onClick={() => { setWithdrawalSuccess(false); setWithdrawalForm({ bank: '', account: '', name: '', amount: '' }); }}>Request New Allocation Routing</Btn>
+                <Btn onClick={() => { setWithdrawalSuccess(false); setWithdrawalForm({ bank: '', account: '', name: currentUser?.name || '', amount: '' }); }}>Request New Allocation Routing</Btn>
               </div>
             ) : (
               <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
                 <form onSubmit={submitWithdrawalRequest} style={{ flex: 2, minWidth: 300, background: 'var(--bg-card)', padding: 28, borderRadius: 16, border: '1px solid var(--border-color)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
-                    <span style={{ color: 'var(--clr-muted)' }}>Maximum Liquidation Volatility:</span>
+                    <span style={{ color: 'var(--clr-muted)' }}>Available Balance:</span>
                     <span style={{ fontWeight: 900, color: 'var(--clr-gold)' }}>{naira(userBalance)}</span>
                   </div>
                   
@@ -705,6 +795,10 @@ function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, us
                       <option value="Zenith">Zenith National Bank</option>
                       <option value="Access">Access Bank International</option>
                       <option value="UBA">United Bank for Africa (UBA)</option>
+                      <option value="First Bank">First Bank of Nigeria</option>
+                      <option value="Kuda">Kuda Bank</option>
+                      <option value="Opay">Opay</option>
+                      <option value="Palmpay">PalmPay</option>
                     </select>
                   </div>
 
@@ -714,25 +808,27 @@ function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, us
                   </div>
 
                   <div style={{ marginBottom: 16 }}>
-                    <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 6 }}>Verified Beneficiary Account Name String</label>
-                    <input required type="text" className="withdraw-input" placeholder="Oluwaseun Ogunseye" value={withdrawalForm.name} onChange={e => setWithdrawalForm({...withdrawalForm, name: e.target.value})} />
+                    <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 6 }}>Verified Beneficiary Account Name</label>
+                    <input required type="text" className="withdraw-input" placeholder="Your full name as on bank account" value={withdrawalForm.name} onChange={e => setWithdrawalForm({...withdrawalForm, name: e.target.value})} />
                   </div>
 
                   <div style={{ marginBottom: 20 }}>
-                    <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 6 }}>Disbursement Volume (Minimum ₦2,000 Threshold Rules Apply)</label>
+                    <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 6 }}>Disbursement Volume (Minimum ₦2,000)</label>
                     <input required type="number" min="2000" max={userBalance} className="withdraw-input" placeholder="2000" value={withdrawalForm.amount} onChange={e => setWithdrawalForm({...withdrawalForm, amount: e.target.value})} />
                   </div>
 
-                  <Btn full type="submit" disabled={userBalance < 2000 || Number(withdrawalForm.amount) > userBalance}>Initiate Core Verification Settlement Link</Btn>
+                  <Btn full type="submit" disabled={userBalance < 2000 || Number(withdrawalForm.amount) > userBalance || !withdrawalForm.bank}>
+                    Initiate Core Verification Settlement
+                  </Btn>
                 </form>
                 
                 <div style={{ flex: 1, minWidth: 240, background: 'var(--bg-card)', padding: 24, borderRadius: 16, border: '1px solid var(--border-color)', height: 'fit-content' }}>
                   <h4 style={{ fontWeight: 800, marginBottom: 14 }}>Core Compliance Protocols</h4>
                   <div style={{ fontSize: 13, color: 'var(--clr-muted)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <div>• Floor Boundary Minimum Limit: <strong>₦2,000</strong></div>
-                    <div>• Baseline Processing Window: <strong>24 Working Hours Max</strong></div>
-                    <div>• Financial Clearing Protocol: <strong>Paystack Processing Direct Layer</strong></div>
-                    <div>• Network Gas Protocol Fees: <strong>₦0.00 (Completely Waived)</strong></div>
+                    <div>• Minimum Limit: <strong>₦2,000</strong></div>
+                    <div>• Processing Window: <strong>24 Working Hours Max</strong></div>
+                    <div>• Clearing Protocol: <strong>Paystack Direct Layer</strong></div>
+                    <div>• Transaction Fees: <strong>₦0.00 (Waived)</strong></div>
                   </div>
                 </div>
               </div>
@@ -743,19 +839,19 @@ function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, us
         {page === 'referrals' && (
           <div className="fade-in">
             <h1 style={{ fontSize: 24, fontWeight: 900, marginBottom: 6 }}>Reference Node Link Registry</h1>
-            <p style={{ color: 'var(--clr-muted)', fontSize: 14, marginBottom: 32 }}>Distribute unique protocol referral identification tags to clear immediate tracking payments per activation.</p>
+            <p style={{ color: 'var(--clr-muted)', fontSize: 14, marginBottom: 32 }}>Distribute your unique referral tag to earn per activation.</p>
             
             <div style={{ background: 'linear-gradient(135deg, var(--bg-card), #142519)', padding: 32, borderRadius: 16, border: '1px solid #22c55e33', marginBottom: 24 }}>
               <span style={{ fontSize: 12, color: 'var(--clr-muted)' }}>Your Unique Protocol Signature Tag</span>
               <div style={{ display: 'flex', gap: 12, marginTop: 8, marginBottom: 24 }}>
                 <input readOnly type="text" className="withdraw-input" style={{ fontSize: 18, fontWeight: 900, color: 'var(--clr-green)', letterSpacing: 2 }} value={profileRefCode} />
-                <Btn size="sm" onClick={() => alert('Reference Link Signature Copied to Dashboard Clipboard Buffer.')}>Copy Tag</Btn>
+                <Btn size="sm" onClick={() => { navigator.clipboard?.writeText(profileRefCode); alert('Referral code copied!'); }}>Copy Tag</Btn>
               </div>
 
               <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                 <StatCard label="Total Nodes Recruited" value="0 Registered Users" icon="👥" color="var(--clr-blue)" />
                 <StatCard label="Reference Generated Yield" value="₦0.00" icon="💰" color="var(--clr-gold)" />
-                <StatCard label="Active Contract Allocation Payment Rate" value={isPremium ? '₦1,000 / node' : '₦500 / node'} icon="🎯" color="var(--clr-green)" />
+                <StatCard label="Active Allocation Rate" value={isPremium ? '₦1,000 / node' : '₦500 / node'} icon="🎯" color="var(--clr-green)" />
               </div>
             </div>
           </div>
@@ -785,38 +881,51 @@ function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, us
   );
 }
 
-// ─── ADMINSTRATION CONTROL WORKSPACE TERMINAL ─────────────────────────────────
+// ─── ADMIN CONTROL WORKSPACE TERMINAL ─────────────────────────────────────────
 function AdminDashboard({ onLogout, globalTasksList, setGlobalTasksList, userManagementRows, setUserManagementRows, withdrawalsList, setWithdrawalsList }) {
   const [page, setPage] = useState('overview');
-  
-  // Task Creation Dynamic Buffer State
   const [taskFormInput, setTaskFormInput] = useState({ type: 'video', title: '', url: '', reward: '', plan: 'both' });
   const [taskNoticeAlert, setTaskNoticeAlert] = useState(false);
 
   const pendingSettlementRequests = withdrawalsList.filter(w => w.status === 'pending');
-  const processedCountApproved = withdrawalsList.filter(w => w.status === 'approved').length;
 
   const dispatchActionApprove = (id) => {
-    setWithdrawalsList(prev => prev.map(w => w.id === id ? { ...w, status: 'approved' } : w));
+    setWithdrawalsList(prev => {
+      const updated = prev.map(w => w.id === id ? { ...w, status: 'approved' } : w);
+      store.set(STORAGE_KEYS.WITHDRAWALS, updated);
+      return updated;
+    });
   };
 
   const dispatchActionReject = (id) => {
-    setWithdrawalsList(prev => prev.map(w => w.id === id ? { ...w, status: 'rejected' } : w));
+    setWithdrawalsList(prev => {
+      const updated = prev.map(w => w.id === id ? { ...w, status: 'rejected' } : w);
+      store.set(STORAGE_KEYS.WITHDRAWALS, updated);
+      return updated;
+    });
   };
 
   const dispatchActionRemoveTask = (id) => {
-    setGlobalTasksList(prev => prev.filter(t => t.id !== id));
+    setGlobalTasksList(prev => {
+      const updated = prev.filter(t => t.id !== id);
+      store.set(STORAGE_KEYS.TASKS, updated);
+      return updated;
+    });
   };
 
   const dispatchActionSuspendUser = (id) => {
-    setUserManagementRows(prev => prev.map(u => u.id === id ? { ...u, status: u.status === 'active' ? 'suspended' : 'active' } : u));
+    setUserManagementRows(prev => {
+      const updated = prev.map(u => u.id === id ? { ...u, status: u.status === 'active' ? 'suspended' : 'active' } : u);
+      store.set(STORAGE_KEYS.USERS_REGISTRY, updated);
+      return updated;
+    });
   };
 
   const executeTaskFormSubmission = (e) => {
     e.preventDefault();
     if (!taskFormInput.title || !taskFormInput.url || !taskFormInput.reward) return;
 
-    const builtTaskStructure = {
+    const newTask = {
       id: Date.now(),
       type: taskFormInput.type,
       title: taskFormInput.title,
@@ -825,7 +934,11 @@ function AdminDashboard({ onLogout, globalTasksList, setGlobalTasksList, userMan
       plan: taskFormInput.plan
     };
 
-    setGlobalTasksList(prev => [...prev, builtTaskStructure]);
+    setGlobalTasksList(prev => {
+      const updated = [...prev, newTask];
+      store.set(STORAGE_KEYS.TASKS, updated);
+      return updated;
+    });
     setTaskNoticeAlert(true);
     setTaskFormInput({ type: 'video', title: '', url: '', reward: '', plan: 'both' });
     setTimeout(() => setTaskNoticeAlert(false), 3000);
@@ -840,7 +953,7 @@ function AdminDashboard({ onLogout, globalTasksList, setGlobalTasksList, userMan
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
-      <Sidebar items={adminNavStructure} active={page} setPage={setPage} plan="admin" onLogout={onLogout} pendingWithdrawalsCount={pendingSettlementRequests.length} />
+      <Sidebar items={adminNavStructure} active={page} setPage={setPage} plan="admin" onLogout={onLogout} pendingWithdrawalsCount={pendingSettlementRequests.length} currentUser={{ name: 'Administrator' }} />
 
       <div className="main-scroll main-content" style={{ flex: 1, padding: 40 }}>
         
@@ -851,58 +964,47 @@ function AdminDashboard({ onLogout, globalTasksList, setGlobalTasksList, userMan
               <p style={{ color: 'var(--clr-muted)', fontSize: 14 }}>Real-time micro-economic system telemetry indicators.</p>
             </div>
 
-            {/* REAL-TIME DYNAMIC STATS MATRIX */}
             <div style={{ display: 'flex', gap: 16, marginBottom: 32, flexWrap: 'wrap' }}>
-              
-              {/* 1. Count actual users registered in state */}
-              <StatCard 
-                label="Registered Profile Assets" 
-                value={String(userManagementRows.length)} 
-                icon="👥" 
-                color="var(--clr-blue)" 
-              />
-              
-              {/* 2. Count actual pending withdrawals in queue */}
-              <StatCard 
-                label="Awaiting Settlement Action" 
-                value={String(pendingSettlementRequests.length)} 
-                icon="⏳" 
-                color="var(--clr-gold)" 
-              />
-              
-              {/* 3. Calculate sum of real approved payouts dynamically */}
-              <StatCard 
-                label="Live System Engine Payouts" 
-                value={naira(
-                  withdrawalsList
-                    .filter(w => w.status === 'approved')
-                    .reduce((sum, w) => sum + w.amount, 0)
-                )} 
-                icon="💸" 
-                color="var(--clr-green)" 
-              />
-              
-              {/* 4. Count total live structural tasks */}
-              <StatCard 
-                label="Active Production Tasks Loaded" 
-                value={String(globalTasksList.length)} 
-                icon="📋" 
-                color="var(--clr-purple)" 
-              />
-
+              <StatCard label="Registered Profile Assets" value={String(userManagementRows.length)} icon="👥" color="var(--clr-blue)" />
+              <StatCard label="Awaiting Settlement Action" value={String(pendingSettlementRequests.length)} icon="⏳" color="var(--clr-gold)" />
+              <StatCard label="Live System Payouts Cleared" value={naira(withdrawalsList.filter(w => w.status === 'approved').reduce((s, w) => s + w.amount, 0))} icon="💸" color="var(--clr-green)" />
+              <StatCard label="Active Production Tasks" value={String(globalTasksList.length)} icon="📋" color="var(--clr-purple)" />
             </div>
 
+            {/* Newest registered users */}
             <div style={{ background: 'var(--bg-card)', padding: 24, borderRadius: 16, border: '1px solid var(--border-color)' }}>
-              <h3 style={{ fontWeight: 800, fontSize: 16, marginBottom: 16 }}>⚠️ Critical Task Authorization Clearance Queue ({pendingSettlementRequests.length})</h3>
+              <h3 style={{ fontWeight: 800, fontSize: 16, marginBottom: 16 }}>🆕 Newly Registered Users</h3>
+              {userManagementRows.slice(-5).reverse().length === 0 ? (
+                <p style={{ color: 'var(--clr-muted)', fontSize: 14 }}>No registered users yet.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {userManagementRows.slice(-5).reverse().map(u => (
+                    <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--border-color)' }}>
+                      <div>
+                        <span style={{ fontWeight: 700 }}>{u.name}</span>
+                        <span style={{ color: 'var(--clr-muted)', fontSize: 12, marginLeft: 10 }}>{u.email}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                        <Badge color={u.plan === 'basic' ? 'var(--clr-green)' : 'var(--clr-purple)'}>{u.plan}</Badge>
+                        <span style={{ fontSize: 12, color: 'var(--clr-muted)' }}>Joined {u.joined}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{ background: 'var(--bg-card)', padding: 24, borderRadius: 16, border: '1px solid var(--border-color)', marginTop: 20 }}>
+              <h3 style={{ fontWeight: 800, fontSize: 16, marginBottom: 16 }}>⚠️ Pending Withdrawal Queue ({pendingSettlementRequests.length})</h3>
               {pendingSettlementRequests.length === 0 ? (
-                <p style={{ color: 'var(--clr-muted)', textAlign: 'center', padding: '20px 0', fontSize: 14 }}>All processing pipelines reporting absolute execution clearance synchronizations.</p>
+                <p style={{ color: 'var(--clr-muted)', textAlign: 'center', padding: '20px 0', fontSize: 14 }}>All pipelines clear.</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   {pendingSettlementRequests.map(w => (
                     <div key={w.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 14, borderBottom: '1px solid var(--border-color)', flexWrap: 'wrap', gap: 12 }}>
                       <div>
                         <div style={{ fontWeight: 700 }}>{w.user} ({w.plan.toUpperCase()})</div>
-                        <div style={{ fontSize: 12, color: 'var(--clr-muted)', marginTop: 2 }}>{w.bank} Network • ACC: {w.account}</div>
+                        <div style={{ fontSize: 12, color: 'var(--clr-muted)', marginTop: 2 }}>{w.bank} • ACC: {w.account}</div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <span style={{ fontWeight: 900, color: 'var(--clr-gold)' }}>{naira(w.amount)}</span>
@@ -921,7 +1023,7 @@ function AdminDashboard({ onLogout, globalTasksList, setGlobalTasksList, userMan
           <div className="fade-in">
             <div style={{ marginBottom: 24 }}>
               <h1 style={{ fontSize: 24, fontWeight: 900, marginBottom: 6 }}>Micro-Task Deployment Engine Rig</h1>
-              <p style={{ color: 'var(--clr-muted)', fontSize: 14 }}>Inject brand monetization protocols downstream seamlessly into specific user contract pipelines.</p>
+              <p style={{ color: 'var(--clr-muted)', fontSize: 14 }}>Inject brand monetization protocols into user contract pipelines.</p>
             </div>
 
             <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
@@ -930,49 +1032,49 @@ function AdminDashboard({ onLogout, globalTasksList, setGlobalTasksList, userMan
                 
                 {taskNoticeAlert && (
                   <div style={{ background: '#22c55e22', border: '1px solid var(--clr-green)', color: 'var(--clr-green)', padding: 12, borderRadius: 8, fontSize: 13, marginBottom: 16 }}>
-                    ✓ Configuration compiled and deployed successfully to cluster nodes.
+                    ✓ Configuration compiled and deployed successfully.
                   </div>
                 )}
 
                 <div style={{ marginBottom: 12 }}>
                   <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 4 }}>Protocol Engine Mode</label>
                   <select className="withdraw-input" value={taskFormInput.type} onChange={e => setTaskFormInput({...taskFormInput, type: e.target.value})}>
-                    <option value="video">Stream Video Advertising Ad Block</option>
-                    <option value="follow">Target Account Core Audience Growth</option>
-                    <option value="like">Like Sentiment Data Verification</option>
-                    <option value="comment">Detailed Feedback Audit Input</option>
+                    <option value="video">Stream Video Advertising</option>
+                    <option value="follow">Target Account Growth (Follow)</option>
+                    <option value="like">Like Sentiment Verification</option>
+                    <option value="comment">Feedback Audit (Comment)</option>
                   </select>
                 </div>
 
                 <div style={{ marginBottom: 12 }}>
-                  <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 4 }}>Brand Action Title String</label>
+                  <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 4 }}>Brand Action Title</label>
                   <input required type="text" className="withdraw-input" placeholder="e.g., Watch MTN 2026 Promo Advert" value={taskFormInput.title} onChange={e => setTaskFormInput({...taskFormInput, title: e.target.value})} />
                 </div>
 
                 <div style={{ marginBottom: 12 }}>
-                  <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 4 }}>Destination Routing String (URL Target)</label>
+                  <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 4 }}>Destination URL</label>
                   <input required type="url" className="withdraw-input" placeholder="https://example.com" value={taskFormInput.url} onChange={e => setTaskFormInput({...taskFormInput, url: e.target.value})} />
                 </div>
 
                 <div style={{ marginBottom: 12 }}>
-                  <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 4 }}>Micro-Allocation Reward Token Volume (₦ Value)</label>
+                  <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 4 }}>Reward Token (₦ Value)</label>
                   <input required type="number" className="withdraw-input" placeholder="150" value={taskFormInput.reward} onChange={e => setTaskFormInput({...taskFormInput, reward: e.target.value})} />
                 </div>
 
                 <div style={{ marginBottom: 16 }}>
-                  <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 4 }}>Contract Cluster Restriction Scope</label>
+                  <label style={{ fontSize: 12, color: 'var(--clr-muted)', display: 'block', marginBottom: 4 }}>Target Audience Scope</label>
                   <select className="withdraw-input" value={taskFormInput.plan} onChange={e => setTaskFormInput({...taskFormInput, plan: e.target.value})}>
-                    <option value="both">Unrestricted Global Release (Basic + Premium)</option>
-                    <option value="basic">Isolate to Basic Framework Tier Exclusively</option>
-                    <option value="premium">Isolate to Accelerated Premium Allocation Group</option>
+                    <option value="both">Global (Basic + Premium)</option>
+                    <option value="basic">Basic Only</option>
+                    <option value="premium">Premium Only</option>
                   </select>
                 </div>
 
-                <Btn full type="submit">Compile & BroadCast Task</Btn>
+                <Btn full type="submit">Compile & Broadcast Task</Btn>
               </form>
 
               <div style={{ flex: 1.5, minWidth: 300 }}>
-                <h3 style={{ fontWeight: 800, marginBottom: 16 }}>Live Runtime Active System Arrays ({globalTasksList.length})</h3>
+                <h3 style={{ fontWeight: 800, marginBottom: 16 }}>Live Active System Arrays ({globalTasksList.length})</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 540, overflowY: 'auto', paddingRight: 4 }}>
                   {globalTasksList.map(t => (
                     <div key={t.id} style={{ background: 'var(--bg-card)', padding: 16, borderRadius: 12, border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
@@ -981,7 +1083,7 @@ function AdminDashboard({ onLogout, globalTasksList, setGlobalTasksList, userMan
                         <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
                           <Badge color={TASK_COLOR[t.type]}>{t.type}</Badge>
                           <Badge color="var(--clr-gold)">₦{t.reward}</Badge>
-                          <Badge color="var(--clr-muted)">Target: {t.plan}</Badge>
+                          <Badge color="var(--clr-muted)">{t.plan}</Badge>
                         </div>
                       </div>
                       <Btn variant="danger" size="sm" onClick={() => dispatchActionRemoveTask(t.id)}>Kill Node</Btn>
@@ -996,7 +1098,7 @@ function AdminDashboard({ onLogout, globalTasksList, setGlobalTasksList, userMan
         {page === 'withdrawals' && (
           <div className="fade-in">
             <h1 style={{ fontSize: 24, fontWeight: 900, marginBottom: 6 }}>Settlement Allocation Ledger Pipelines</h1>
-            <p style={{ color: 'var(--clr-muted)', fontSize: 14, marginBottom: 32 }}>Authoritatively route Paystack execution APIs or refuse transaction records.</p>
+            <p style={{ color: 'var(--clr-muted)', fontSize: 14, marginBottom: 32 }}>Approve or reject all pending withdrawal records.</p>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {withdrawalsList.map(w => (
@@ -1006,13 +1108,13 @@ function AdminDashboard({ onLogout, globalTasksList, setGlobalTasksList, userMan
                       <span style={{ fontWeight: 700 }}>{w.user}</span>
                       <Badge color={w.plan === 'basic' ? 'var(--clr-green)' : 'var(--clr-purple)'}>{w.plan}</Badge>
                     </div>
-                    <div style={{ fontSize: 12, color: 'var(--clr-muted)', marginTop: 4 }}>{w.bank} Network • Account Node ID: {w.account}</div>
+                    <div style={{ fontSize: 12, color: 'var(--clr-muted)', marginTop: 4 }}>{w.bank} • Account: {w.account} • {w.date}</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                     <span style={{ fontWeight: 900, fontSize: 18, color: 'var(--clr-gold)' }}>{naira(w.amount)}</span>
                     {w.status === 'pending' ? (
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <Btn size="sm" onClick={() => dispatchActionApprove(w.id)}>Clear Pipeline</Btn>
+                        <Btn size="sm" onClick={() => dispatchActionApprove(w.id)}>Approve</Btn>
                         <Btn variant="danger" size="sm" onClick={() => dispatchActionReject(w.id)}>Reject</Btn>
                       </div>
                     ) : (
@@ -1029,29 +1131,33 @@ function AdminDashboard({ onLogout, globalTasksList, setGlobalTasksList, userMan
 
         {page === 'users' && (
           <div className="fade-in">
-            <h1 style={{ fontSize: 24, fontWeight: 900, marginBottom: 6 }}>Platform Profile Registry Security Cells</h1>
-            <p style={{ color: 'var(--clr-muted)', fontSize: 14, marginBottom: 32 }}>Oversee profile balances and dynamically drop active states to preserve data stability metrics.</p>
+            <h1 style={{ fontSize: 24, fontWeight: 900, marginBottom: 6 }}>Platform User Registry</h1>
+            <p style={{ color: 'var(--clr-muted)', fontSize: 14, marginBottom: 32 }}>Oversee all registered user profiles, balances, and account states.</p>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {userManagementRows.map(u => (
-                <div key={u.id} style={{ background: 'var(--bg-card)', padding: 18, borderRadius: 14, border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontWeight: 700, color: u.status === 'suspended' ? 'var(--clr-red)' : 'var(--clr-text)' }}>{u.name}</span>
-                      {u.status === 'suspended' && <Badge color="var(--clr-red)">SUSPENDED</Badge>}
+              {userManagementRows.length === 0 ? (
+                <p style={{ color: 'var(--clr-muted)', textAlign: 'center', padding: 40 }}>No users registered yet.</p>
+              ) : (
+                userManagementRows.map(u => (
+                  <div key={u.id} style={{ background: 'var(--bg-card)', padding: 18, borderRadius: 14, border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontWeight: 700, color: u.status === 'suspended' ? 'var(--clr-red)' : 'var(--clr-text)' }}>{u.name}</span>
+                        {u.status === 'suspended' && <Badge color="var(--clr-red)">SUSPENDED</Badge>}
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--clr-muted)', marginTop: 4 }}>{u.email} • Joined {u.joined}</div>
                     </div>
-                    <div style={{ fontSize: 12, color: 'var(--clr-muted)', marginTop: 4 }}>{u.email} • Tracking Node Active Since {u.joined}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                      <Badge color={u.plan === 'basic' ? 'var(--clr-green)' : 'var(--clr-purple)'}>{u.plan}</Badge>
+                      <span style={{ fontWeight: 700, color: 'var(--clr-gold)' }}>{naira(u.balance)}</span>
+                      <span style={{ fontSize: 13, color: 'var(--clr-muted)' }}>Tasks: {u.tasks}</span>
+                      <Btn variant={u.status === 'active' ? 'danger' : 'green'} size="sm" onClick={() => dispatchActionSuspendUser(u.id)}>
+                        {u.status === 'active' ? 'Suspend' : 'Reinstate'}
+                      </Btn>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-                    <Badge color={u.plan === 'basic' ? 'var(--clr-green)' : 'var(--clr-purple)'}>{u.plan}</Badge>
-                    <span style={{ fontWeight: 700, color: 'var(--clr-gold)' }}>{naira(u.balance)}</span>
-                    <span style={{ fontSize: 13, color: 'var(--clr-muted)' }}>Tasks: {u.tasks}</span>
-                    <Btn variant={u.status === 'active' ? 'danger' : 'green'} size="sm" onClick={() => dispatchActionSuspendUser(u.id)}>
-                      {u.status === 'active' ? 'Suspend Operator' : 'Reinstate Node'}
-                    </Btn>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         )}
@@ -1061,33 +1167,64 @@ function AdminDashboard({ onLogout, globalTasksList, setGlobalTasksList, userMan
   );
 }
 
-// ─── SYSTEM ANCHOR APPARATUS ROOT ENGINE ─────────────────────────────────────
+// ─── ROOT APP CONTROLLER ──────────────────────────────────────────────────────
 function App() {
   const [screen, setScreen] = useState('landing');
   const [activeRoleContext, setActiveRoleContext] = useState(null);
   const [routingPlanOverride, setRoutingPlanOverride] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
 
-  // Unified global system data pools state configurations
-  const [globalTasksList, setGlobalTasksList] = useState(INITIAL_TASKS);
-  const [userManagementRows, setUserManagementRows] = useState(INITIAL_USERS);
-  const [withdrawalsList, setWithdrawalsList] = useState(INITIAL_WITHDRAWALS);
-  
-  // Specific Current Running Sandbox User State
+  // Load tasks from localStorage or use initial
+  const [globalTasksList, setGlobalTasksList] = useState(() => {
+    return store.get(STORAGE_KEYS.TASKS) || INITIAL_TASKS;
+  });
+
+  // Load users: merge INITIAL_USERS with any saved registrations
+  const [userManagementRows, setUserManagementRows] = useState(() => {
+    const savedRegistry = store.get(STORAGE_KEYS.USERS_REGISTRY, []);
+    // Merge: saved registry takes precedence, initial users fill the rest
+    const savedEmails = new Set(savedRegistry.map(u => u.email));
+    const merged = [...savedRegistry, ...INITIAL_USERS.filter(u => !savedEmails.has(u.email))];
+    return merged;
+  });
+
+  // Load withdrawals from localStorage or use initial
+  const [withdrawalsList, setWithdrawalsList] = useState(() => {
+    return store.get(STORAGE_KEYS.WITHDRAWALS) || INITIAL_WITHDRAWALS;
+  });
+
+  // User-specific state
   const [userBalance, setUserBalance] = useState(500);
   const [globalUserTasksState, setGlobalUserTasksState] = useState({});
 
-  const handlePortalLoginResolution = (resolvedRole) => {
+  // Called when any login (admin or user) succeeds
+  const handlePortalLoginResolution = (resolvedRole, profile) => {
     setActiveRoleContext(resolvedRole);
-    if (resolvedRole === 'premium') {
-      setUserBalance(1000); // Setup standard baseline configuration asset conditions
-    } else if (resolvedRole === 'basic') {
-      setUserBalance(500);
+    setCurrentUser(profile);
+
+    if (resolvedRole !== 'admin') {
+      // Load their saved balance and task state
+      const savedProfile = store.get(STORAGE_KEYS.userProfile(profile.email));
+      setUserBalance(savedProfile?.balance || profile.balance || (resolvedRole === 'premium' ? 1000 : 500));
+      setGlobalUserTasksState(savedProfile?.tasksState || {});
     }
     setScreen('dashboard-portal');
   };
 
+  // Called when a brand-new user pays and registers
+  const handleRegisterNewUser = (newUserProfile) => {
+    setUserManagementRows(prev => {
+      const alreadyExists = prev.find(u => u.email === newUserProfile.email);
+      if (alreadyExists) return prev;
+      const updated = [...prev, newUserProfile];
+      store.set(STORAGE_KEYS.USERS_REGISTRY, updated);
+      return updated;
+    });
+  };
+
   const handlePortalLogoutSequence = () => {
     setActiveRoleContext(null);
+    setCurrentUser(null);
     setGlobalUserTasksState({});
     setScreen('landing');
   };
@@ -1095,28 +1232,41 @@ function App() {
   return (
     <div>
       {screen === 'landing' && <LandingPage setScreen={setScreen} setPlanSelection={setRoutingPlanOverride} />}
-      {(screen === 'login' || screen === 'signup') && (
-        <img style={{display:'none'}} src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1' height='1'></svg>" onLoad={() => {}} />
-      )}
-      {screen === 'login' && <AuthPage mode="login" setScreen={setScreen} onLoginSuccess={handlePortalLoginResolution} initialSelectedPlan={routingPlanOverride} />}
-       {screen === 'signup' && <AuthPage mode="signup" setScreen={setScreen} onLoginSuccess={handlePortalLoginResolution} initialSelectedPlan={routingPlanOverride} />}
       
+      {screen === 'login' && (
+        <AuthPage
+          mode="login"
+          setScreen={setScreen}
+          onLoginSuccess={handlePortalLoginResolution}
+          initialSelectedPlan={routingPlanOverride}
+          onRegisterNewUser={handleRegisterNewUser}
+        />
+      )}
+      {screen === 'signup' && (
+        <AuthPage
+          mode="signup"
+          setScreen={setScreen}
+          onLoginSuccess={handlePortalLoginResolution}
+          initialSelectedPlan={routingPlanOverride}
+          onRegisterNewUser={handleRegisterNewUser}
+        />
+      )}
       
       {screen === 'dashboard-portal' && (
         activeRoleContext === 'admin' ? (
-          <AdminDashboard 
-            onLogout={handlePortalLogoutSequence} 
-            globalTasksList={globalTasksList} 
-            setGlobalTasksList={setGlobalTasksList} 
-            userManagementRows={userManagementRows} 
-            setUserManagementRows={setUserManagementRows} 
-            withdrawalsList={withdrawalsList} 
-            setWithdrawalsList={setWithdrawalsList} 
+          <AdminDashboard
+            onLogout={handlePortalLogoutSequence}
+            globalTasksList={globalTasksList}
+            setGlobalTasksList={setGlobalTasksList}
+            userManagementRows={userManagementRows}
+            setUserManagementRows={setUserManagementRows}
+            withdrawalsList={withdrawalsList}
+            setWithdrawalsList={setWithdrawalsList}
           />
         ) : (
-          <UserDashboard 
-            plan={activeRoleContext} 
-            onLogout={handlePortalLogoutSequence} 
+          <UserDashboard
+            plan={activeRoleContext}
+            onLogout={handlePortalLogoutSequence}
             globalTasksList={globalTasksList}
             setGlobalTasksList={setGlobalTasksList}
             userBalance={userBalance}
@@ -1124,6 +1274,7 @@ function App() {
             globalUserTasksState={globalUserTasksState}
             setGlobalUserTasksState={setGlobalUserTasksState}
             setWithdrawalsList={setWithdrawalsList}
+            currentUser={currentUser}
           />
         )
       )}
