@@ -79,7 +79,7 @@
 <script type="text/babel">
 const { useState, useEffect, useRef } = React;
 const SUPABASE_URL = "https://wvvggkqsohzmbypdjexc.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2dmdna3Fzb2h6bWJ5cGRqZXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxODI5NDYsImV4cCI6MjA5NDc1ODk0Nn0.AJtvvZMA9tFSBXlwXLmZ3oEP5skFAl92sbv4Br2McKA";
+const SUPABASE_ANON_KEY = "sb_publishable_xO31WDsqpJT8UcLZAxZzzA_W-8r8BRJ";
 
 const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // ─── CONSTANTS & CONFIG ───────────────────────────────────────────────────────
@@ -465,7 +465,9 @@ function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan, onRegi
               balance: defaultStartingBalance,
               paid: true,
               status: 'active',
-              joined: 'Today'
+              joined: 'Today',
+              total_referrals: 0,
+              referral_earnings: 0
             };
 
             const { error: profileError } = await supabase
@@ -473,6 +475,61 @@ function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan, onRegi
               .insert([fullProfile]);
 
             if (profileError) throw profileError;
+
+            // ─── ADDED: INBOUND REFERRAL CONTEXT HOOK ───
+            const activeRefCode = localStorage.getItem('9ja_active_ref_code');
+            if (activeRefCode) {
+              const codeParts = activeRefCode.split('-');
+              const matchingIdSnippet = codeParts[codeParts.length - 1]; // Pulls the target profile ID identifier snippet
+
+              // Look up the affiliate parent profile inside Supabase
+              const { data: allProfiles, error: fetchErr } = await supabase
+                .from('profiles')
+                .select('*');
+
+              if (!fetchErr && allProfiles) {
+                const parentUser = allProfiles.find(p => p.id && p.id.toString().slice(-4) === matchingIdSnippet);
+                if (parentUser) {
+                  const creditCommissionValue = parentUser.plan === 'premium' ? 1000 : 500;
+                  const updatedParentBalance = (parentUser.balance || 0) + creditCommissionValue;
+                  const updatedParentRefsCount = (parentUser.total_referrals || 0) + 1;
+                  const updatedParentRefEarnings = (parentUser.referral_earnings || 0) + creditCommissionValue;
+
+                  // Update database profile record for the referrer
+                  await supabase
+                    .from('profiles')
+                    .update({ 
+                      balance: updatedParentBalance,
+                      total_referrals: updatedParentRefsCount,
+                      referral_earnings: updatedParentRefEarnings
+                    })
+                    .eq('id', parentUser.id);
+
+                  // Update the local storage backup mirror copy for the referrer if running locally
+                  const parentLocalSaved = store.get(STORAGE_KEYS.userProfile(parentUser.email));
+                  if (parentLocalSaved) {
+                    store.set(STORAGE_KEYS.userProfile(parentUser.email), {
+                      ...parentLocalSaved,
+                      balance: updatedParentBalance,
+                      total_referrals: updatedParentRefsCount,
+                      referral_earnings: updatedParentRefEarnings
+                    });
+                  }
+
+                  // Synchronize inside admin tracking system array ledger row state elements
+                  const adminUsersList = store.get(STORAGE_KEYS.USERS_REGISTRY, []);
+                  const registryIdx = adminUsersList.findIndex(u => u.email === parentUser.email);
+                  if (registryIdx !== -1) {
+                    adminUsersList[registryIdx].balance = updatedParentBalance;
+                    adminUsersList[registryIdx].refs = updatedParentRefsCount;
+                    store.set(STORAGE_KEYS.USERS_REGISTRY, adminUsersList);
+                  }
+                  
+                  localStorage.removeItem('9ja_active_ref_code'); // Purge token reference
+                  console.log(`Referral successfully processed. Credited ₦${creditCommissionValue} to ${parentUser.name}`);
+                }
+              }
+            }
 
             // Save individual user local profile representation safely
             store.set(STORAGE_KEYS.userProfile(formData.email), fullProfile);
@@ -632,6 +689,10 @@ function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, us
   const [withdrawalForm, setWithdrawalForm] = useState({ bank: '', account: '', name: currentUser?.name || '', amount: '' });
   const [showActiveUpgradeModal, setShowActiveUpgradeModal] = useState(false);
   
+  // Real-time tracking elements synchronized with backend context variables
+  const [liveRefsCount, setLiveRefsCount] = useState(currentUser?.total_referrals || 0);
+  const [liveRefsEarnings, setLiveRefsEarnings] = useState(currentUser?.referral_earnings || 0);
+
   const isPremium = plan === 'premium';
   const executableTasks = globalTasksList.filter(t => t.plan === 'both' || t.plan === plan);
 
@@ -642,7 +703,29 @@ function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, us
     ];
   });
 
+  // Pull real-time live reference stats straight from Supabase engine context to ensure UI accuracy
+  useEffect(() => {
+    if (!currentUser?.id || page !== 'referrals') return;
+    const fetchLiveAffiliateStats = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('total_referrals, referral_earnings, balance')
+          .eq('id', currentUser.id)
+          .single();
+        if (!error && data) {
+          setLiveRefsCount(data.total_referrals || 0);
+          setLiveRefsEarnings(data.referral_earnings || 0);
+          setUserBalance(data.balance);
+        }
+      } catch (e) { console.error(e); }
+    };
+    fetchLiveAffiliateStats();
+  }, [page, currentUser?.id]);
+
   const profileRefCode = `9JW-${isPremium ? 'PREM' : 'BASC'}-${currentUser?.id?.toString().slice(-4) || '2026'}`;
+  const profileRefLink = `https://9jawatchers.com/?ref=${profileRefCode}`;
+
   const completedCount = executableTasks.filter(t => globalUserTasksState[t.id]).length;
   const earningsAccumulatedToday = executableTasks.filter(t => globalUserTasksState[t.id]).reduce((sum, t) => sum + t.reward, 0);
 
@@ -653,18 +736,19 @@ function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, us
       ...saved,
       balance: userBalance,
       tasksState: globalUserTasksState,
-      historyLog
+      historyLog,
+      total_referrals: liveRefsCount,
+      referral_earnings: liveRefsEarnings
     });
 
     const registry = store.get(STORAGE_KEYS.USERS_REGISTRY, []);
     const idx = registry.findIndex(u => u.email === currentUser.email);
     if (idx !== -1) {
-      registry[idx] = { ...registry[idx], balance: userBalance, tasks: completedCount };
+      registry[idx] = { ...registry[idx], balance: userBalance, tasks: completedCount, refs: liveRefsCount };
       store.set(STORAGE_KEYS.USERS_REGISTRY, registry);
     }
-  }, [userBalance, globalUserTasksState, historyLog]);
+  }, [userBalance, globalUserTasksState, historyLog, liveRefsCount, liveRefsEarnings]);
 
-  // FIXED: Syncs task completion directly back to Supabase database profiles record
   const handleTaskRewardExecution = async (taskId, compensation) => {
     const newBalance = userBalance + compensation;
     setGlobalUserTasksState(prev => ({ ...prev, [taskId]: true }));
@@ -688,7 +772,6 @@ function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, us
     }
   };
 
-  // FIXED: Syncs balance deductions following withdrawal requests back to Supabase
   const submitWithdrawalRequest = async (e) => {
     e.preventDefault();
     const targetedAmount = Number(withdrawalForm.amount);
@@ -731,7 +814,7 @@ function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, us
   const navStructure = [
     { id: 'dashboard', icon: '🏠', label: 'Earning Matrix' },
     { id: 'withdraw', icon: '💳', label: 'Withdraw Funds' },
-    { id: 'referrals', icon: '👥', label: 'Referral Program' },
+    { id: 'referrals', icon: '👥', label: 'Referral Earnings' },
     { id: 'history', icon: '📜', label: 'Audit History' }
   ];
 
@@ -853,18 +936,19 @@ function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, us
 
         {page === 'referrals' && (
           <div className="fade-in">
-            <h1 style={{ fontSize: 24, fontWeight: 900, marginBottom: 6 }}>Reference Node Link Registry</h1>
-            <p style={{ color: 'var(--clr-muted)', fontSize: 14, marginBottom: 32 }}>Distribute your unique referral tag to earn per activation.</p>
+            <h1 style={{ fontSize: 24, fontWeight: 900, marginBottom: 6 }}>Referral Earnings Network Link Registry</h1>
+            <p style={{ color: 'var(--clr-muted)', fontSize: 14, marginBottom: 32 }}>Distribute your unique activation invite URL to earn commissions per network entry.</p>
             <div style={{ background: 'linear-gradient(135deg, var(--bg-card), #142519)', padding: 32, borderRadius: 16, border: '1px solid #22c55e33', marginBottom: 24 }}>
-              <span style={{ fontSize: 12, color: 'var(--clr-muted)' }}>Your Unique Protocol Signature Tag</span>
+              <span style={{ fontSize: 12, color: 'var(--clr-muted)' }}>Your Global Shareable Referral Link</span>
               <div style={{ display: 'flex', gap: 12, marginTop: 8, marginBottom: 24 }}>
-                <input readOnly type="text" className="withdraw-input" style={{ fontSize: 18, fontWeight: 900, color: 'var(--clr-green)', letterSpacing: 2 }} value={profileRefCode} />
-                <Btn size="sm" onClick={() => { navigator.clipboard?.writeText(profileRefCode); alert('Referral code copied!'); }}>Copy Tag</Btn>
+                <input readOnly type="text" className="withdraw-input" style={{ fontSize: 14, fontWeight: 600, color: 'var(--clr-green)' }} value={profileRefLink} />
+                <Btn size="sm" onClick={() => { navigator.clipboard?.writeText(profileRefLink); alert('Referral link successfully copied to clipboard!'); }}>Copy Link</Btn>
               </div>
               <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                <StatCard label="Total Nodes Recruited" value="0 Registered Users" icon="👥" color="var(--clr-blue)" />
-                <StatCard label="Reference Generated Yield" value="₦0.00" icon="💰" color="var(--clr-gold)" />
-                <StatCard label="Active Allocation Rate" value={isPremium ? '₦1,000 / node' : '₦500 / node'} icon="🎯" color="var(--clr-green)" />
+                {/* CONNECTED: These components now output completely live structural tracking arrays */}
+                <StatCard label="Total Nodes Recruited" value={`${liveRefsCount} Registered Users`} icon="👥" color="#3b82f6" />
+                <StatCard label="Reference Generated Yield" value={naira(liveRefsEarnings)} icon="💰" color="#f59e0b" />
+                <StatCard label="Active Allocation Rate" value={isPremium ? '₦1,000 / node' : '₦500 / node'} icon="🎯" color="#22c55e" />
               </div>
             </div>
           </div>
@@ -1185,6 +1269,16 @@ function App() {
   const [routingPlanOverride, setRoutingPlanOverride] = useState(null);
   const [activeRoleContext, setActiveRoleContext] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
+
+  // ─── ADDED: INBOUND PARAMETER LISTENER FOR THE ENTIRE LIFECYCLE ROUTE ───
+  useEffect(() => {
+    const trackingParams = new URLSearchParams(window.location.search);
+    const codeParamToken = trackingParams.get('ref');
+    if (codeParamToken) {
+      localStorage.setItem('9ja_active_ref_code', codeParamToken.trim());
+      console.log(`Affiliate tracking tag intercepted and locked: ${codeParamToken}`);
+    }
+  }, []);
 
   const [globalTasksList, setGlobalTasksList] = useState(() => {
     return store.get(STORAGE_KEYS.TASKS) || INITIAL_TASKS;
