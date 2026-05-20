@@ -1752,6 +1752,14 @@ function App() {
   }, []);
 
   const [globalTasksList, setGlobalTasksList] = useState(() => store.get(STORAGE_KEYS.TASKS) || INITIAL_TASKS);
+  const [userManagementRows, setUserManagementRows] = useState(() => {
+    const saved = store.get(STORAGE_KEYS.USERS_REGISTRY, []);
+    const emails = new Set(saved.map(u => u.email));
+    return [...saved, ...INITIAL_USERS.filter(u => !emails.has(u.email))];
+  });
+  const [withdrawalsList, setWithdrawalsList] = useState(() => store.get(STORAGE_KEYS.WITHDRAWALS) || INITIAL_WITHDRAWALS);
+  const [userBalance, setUserBalance] = useState(500);
+  const [globalUserTasksState, setGlobalUserTasksState] = useState({});
 
   // ── SYNC TASKS ACROSS TABS/SESSIONS ──
   useEffect(() => {
@@ -1780,14 +1788,6 @@ function App() {
     window.addEventListener('storage', onWdStorage);
     return () => window.removeEventListener('storage', onWdStorage);
   }, []);
-  const [userManagementRows, setUserManagementRows] = useState(() => {
-    const saved = store.get(STORAGE_KEYS.USERS_REGISTRY, []);
-    const emails = new Set(saved.map(u => u.email));
-    return [...saved, ...INITIAL_USERS.filter(u => !emails.has(u.email))];
-  });
-  const [withdrawalsList, setWithdrawalsList] = useState(() => store.get(STORAGE_KEYS.WITHDRAWALS) || INITIAL_WITHDRAWALS);
-  const [userBalance, setUserBalance] = useState(500);
-  const [globalUserTasksState, setGlobalUserTasksState] = useState({});
 
   const handleLogin = (role, profile) => {
     setRoleContext(role);
