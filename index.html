@@ -893,7 +893,7 @@ function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan, onRegi
   const handlePaystack = () => {
     const amountKobo = (selectedPlan === 'premium' ? 8000 : 4000) * 100;
     try {
-      const paystack = new PaystackPop();
+     const paystack = new window.PaystackPop();
       paystack.newTransaction({
         key: 'pk_live_56cd68f5adb0e165c34545bee318900fcd3505e3',
         email: formData.email.toLowerCase().trim(),
