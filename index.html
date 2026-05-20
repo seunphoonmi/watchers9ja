@@ -606,7 +606,7 @@ function StatCard({ label, value, icon, accent = 'green' }) {
 function TaskCard({ task, onComplete, globalUserTasksState }) {
   const isDone = globalUserTasksState?.[task.id] || false;
   const [state, setState] = useState(isDone ? 'done' : 'idle');
-  const [secs, setSecs] = useState(50);
+  const [secs, setSecs] = useState(30);
   const timerRef = useRef(null);
 
   useEffect(() => {
@@ -616,7 +616,7 @@ function TaskCard({ task, onComplete, globalUserTasksState }) {
   const startTask = () => {
     window.open(task.url, '_blank');
     setState('counting');
-    let s = 50;
+    let s = 30;
     timerRef.current = setInterval(() => {
       s--;
       setSecs(s);
@@ -661,7 +661,7 @@ function TaskCard({ task, onComplete, globalUserTasksState }) {
               <span style={{ color: 'var(--gold)', fontWeight: 900, fontSize: 15 }}>{secs}s</span>
             </div>
             <div className="progress-track" style={{ width: 52 }}>
-              <div className="progress-fill" style={{ width: `${((50-secs)/50)*100}%`, background: 'var(--gold)' }} />
+              <div className="progress-fill" style={{ width: `${((30-secs)/30)*100}%`, background: 'var(--gold)' }} />
             </div>
           </div>
         )}
@@ -1200,7 +1200,43 @@ function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, us
                 Unlock 20 high-yield tasks daily, ₦1,000 welcome bonus, and priority withdrawals.
               </p>
             </div>
-            <button className="btn btn-gold btn-full" onClick={() => window.location.reload()}>Pay ₦8,000 to Upgrade</button>
+            <button className="btn btn-gold btn-full" onClick={() => {
+              if (typeof window.PaystackPop === 'undefined') {
+                toast.error('Payment Error', 'Paystack failed to load. Please refresh the page and try again.');
+                return;
+              }
+              const paystack = new window.PaystackPop();
+              paystack.newTransaction({
+                key: 'pk_live_56cd68f5adb0e165c34545bee318900fcd3505e3',
+                email: currentUser?.email || '',
+                amount: 8000 * 100,
+                currency: 'NGN',
+                metadata: {
+                  custom_fields: [
+                    { display_name: 'Full Name', variable_name: 'customer_name', value: currentUser?.name || '' },
+                    { display_name: 'Plan', variable_name: 'plan', value: 'premium' }
+                  ]
+                },
+                onSuccess: async (transaction) => {
+                  setShowUpgradeModal(false);
+                  toast.info('Payment Received', `Ref: ${transaction.reference} — Upgrading your account…`);
+                  try {
+                    if (currentUser?.id) {
+                      await supabase.from('profiles').update({ plan: 'premium', balance: (userBalance || 0) + 1000 }).eq('id', currentUser.id);
+                    }
+                    const savedProfile = store.get(STORAGE_KEYS.userProfile(currentUser?.email || '')) || {};
+                    store.set(STORAGE_KEYS.userProfile(currentUser?.email || ''), { ...savedProfile, plan: 'premium', balance: (userBalance || 0) + 1000 });
+                    setUserBalance(prev => prev + 1000);
+                    toast.success('Upgrade Successful! 🎉', 'You are now on Premium. Enjoy 20 high-yield tasks daily!');
+                    setTimeout(() => window.location.reload(), 2000);
+                  } catch (err) {
+                    toast.error('Upgrade Error', `Payment received but upgrade failed: ${err.message}`);
+                  }
+                },
+                onCancel: () => toast.warning('Payment Cancelled', 'Your upgrade payment was not completed.'),
+                onError: (err) => toast.error('Payment Error', err.message || 'Something went wrong with the payment.')
+              });
+            }}>Pay ₦8,000 to Upgrade</button>
             <button className="btn btn-ghost btn-sm btn-full" style={{ marginTop: 8 }} onClick={() => setShowUpgradeModal(false)}>Maybe Later</button>
           </div>
         </div>
