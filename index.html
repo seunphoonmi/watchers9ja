@@ -1718,6 +1718,20 @@ function App() {
   }, []);
 
   const [globalTasksList, setGlobalTasksList] = useState(() => store.get(STORAGE_KEYS.TASKS) || INITIAL_TASKS);
+
+  // ── SYNC TASKS ACROSS TABS/SESSIONS ──
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key === STORAGE_KEYS.TASKS && e.newValue) {
+        try {
+          const updated = JSON.parse(e.newValue);
+          if (Array.isArray(updated)) setGlobalTasksList(updated);
+        } catch {}
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
   const [userManagementRows, setUserManagementRows] = useState(() => {
     const saved = store.get(STORAGE_KEYS.USERS_REGISTRY, []);
     const emails = new Set(saved.map(u => u.email));
