@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>9jaWatchers — Earn With Every Click</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://js.paystack.co/v1/inline.js"></script>
+  <script src="https://js.paystack.co/v2/inline.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
@@ -891,12 +891,23 @@ function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan, onRegi
   };
 
   const handlePaystack = () => {
+    const email = formData.email.toLowerCase().trim();
+    const name = formData.name.trim();
+    if (!email || !name) {
+      toast.error('Missing Info', 'Please fill in your name and email before proceeding.');
+      setStep(1);
+      return;
+    }
+    if (typeof window.PaystackPop === 'undefined') {
+      toast.error('Payment Error', 'Paystack failed to load. Please refresh the page and try again.');
+      return;
+    }
     const amountKobo = (selectedPlan === 'premium' ? 8000 : 4000) * 100;
     try {
-     const paystack = new window.PaystackPop();
+      const paystack = new window.PaystackPop();
       paystack.newTransaction({
         key: 'pk_live_56cd68f5adb0e165c34545bee318900fcd3505e3',
-        email: formData.email.toLowerCase().trim(),
+        email: email,
         amount: amountKobo,
         currency: 'NGN',
         metadata: {
