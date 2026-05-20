@@ -509,7 +509,8 @@ const STORAGE_KEYS = {
   USERS_REGISTRY: '9jw_users_registry',
   WITHDRAWALS: '9jw_withdrawals',
   TASKS: '9jw_tasks',
-  userProfile: (email) => `9jw_user_${email.toLowerCase()}`
+  userProfile: (email) => `9jw_user_${email.toLowerCase()}`,
+  SESSION: '9jw_active_session'
 };
 
 const store = {
@@ -1702,6 +1703,18 @@ function App() {
     const params = new URLSearchParams(window.location.search);
     const ref = params.get('ref');
     if (ref) { localStorage.setItem('9ja_active_ref_code', ref.trim()); }
+    // ── RESTORE SESSION ON REFRESH ──
+    const session = store.get(STORAGE_KEYS.SESSION);
+    if (session?.role && session?.user) {
+      setRoleContext(session.role);
+      setCurrentUser(session.user);
+      setScreen('portal');
+      if (session.role !== 'admin') {
+        const saved = store.get(STORAGE_KEYS.userProfile(session.user.email));
+        if (saved?.balance !== undefined) setUserBalance(saved.balance);
+        if (saved?.tasksState) setGlobalUserTasksState(saved.tasksState);
+      }
+    }
   }, []);
 
   const [globalTasksList, setGlobalTasksList] = useState(() => store.get(STORAGE_KEYS.TASKS) || INITIAL_TASKS);
@@ -1722,10 +1735,14 @@ function App() {
       setUserBalance(saved?.balance || profile.balance || (role === 'premium' ? 1000 : 500));
       setGlobalUserTasksState(saved?.tasksState || {});
     }
+    // ── PERSIST SESSION ──
+    store.set(STORAGE_KEYS.SESSION, { role, user: profile });
     setScreen('portal');
   };
 
   const handleLogout = () => {
+    // ── CLEAR SESSION ──
+    store.set(STORAGE_KEYS.SESSION, null);
     setScreen('landing');
     setRoleContext(null);
     setCurrentUser(null);
