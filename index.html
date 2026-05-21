@@ -605,13 +605,13 @@ function StatCard({ label, value, icon, accent = 'green' }) {
 
 // ── TASK CARD ─────────────────────────────────────────────────────────────
 function TaskCard({ task, onComplete, globalUserTasksState }) {
-  const isDone = globalUserTasksState?.[task.id] || false;
+  const isDone = globalUserTasksState?.[task.id] || globalUserTasksState?.[String(task.id)] || false;
   const [state, setState] = useState(isDone ? 'done' : 'idle');
   const [secs, setSecs] = useState(30);
   const timerRef = useRef(null);
 
   useEffect(() => {
-    if (globalUserTasksState?.[task.id]) setState('done');
+    if (globalUserTasksState?.[task.id] || globalUserTasksState?.[String(task.id)]) setState('done');
   }, [globalUserTasksState, task.id]);
 
   const startTask = () => {
@@ -1100,6 +1100,14 @@ function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan, onRegi
 
 // ── USER DASHBOARD ────────────────────────────────────────────────────────
 function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, userBalance, setUserBalance, globalUserTasksState, setGlobalUserTasksState, setWithdrawalsList, currentUser }) {
+  // Normalise tasksState keys to strings (Supabase jsonb returns string keys, JS objects use numeric)
+  const normalizeTasksState = (state) => {
+    if (!state || typeof state !== 'object') return {};
+    const out = {};
+    Object.keys(state).forEach(k => { out[String(k)] = state[k]; });
+    return out;
+  };
+
   const [page, setPage] = useState('dashboard');
   const [withdrawalSuccess, setWithdrawalSuccess] = useState(false);
   const [withdrawalForm, setWithdrawalForm] = useState({ bank: '', account: '', name: currentUser?.name || '', amount: '' });
@@ -1153,8 +1161,8 @@ function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, us
 
   const profileRefCode = `9JW-${isPremium ? 'PREM' : 'BASC'}-${currentUser?.id?.toString().slice(-4) || '2026'}`;
   const profileRefLink = `https://9jawatchers.com/?ref=${profileRefCode}`;
-  const completedCount = executableTasks.filter(t => globalUserTasksState[t.id]).length;
-  const earningsToday = executableTasks.filter(t => globalUserTasksState[t.id]).reduce((s, t) => s + t.reward, 0);
+  const completedCount = executableTasks.filter(t => globalUserTasksState[t.id] || globalUserTasksState[String(t.id)]).length;
+  const earningsToday = executableTasks.filter(t => globalUserTasksState[t.id] || globalUserTasksState[String(t.id)]).reduce((s, t) => s + t.reward, 0);
 
   useEffect(() => {
     if (!currentUser?.email) return;
@@ -1167,7 +1175,7 @@ function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, us
 
   const handleTaskComplete = async (taskId, reward) => {
     const newBal = userBalance + reward;
-    const newTasksState = { ...globalUserTasksState, [taskId]: true };
+    const newTasksState = { ...globalUserTasksState, [String(taskId)]: true };
     setGlobalUserTasksState(newTasksState);
     setUserBalance(newBal);
     const t = executableTasks.find(t => t.id === taskId);
@@ -1766,8 +1774,11 @@ function App() {
           const { data } = await db.from('profiles').select('balance, tasks_state').eq('id', session.user.id).single();
           if (data) {
             if (data.balance !== undefined) setUserBalance(data.balance);
-            if (data.tasks_state) setGlobalUserTasksState(data.tasks_state);
-            else {
+            if (data.tasks_state) {
+              const norm = {};
+              Object.keys(data.tasks_state).forEach(k => { norm[String(k)] = data.tasks_state[k]; });
+              setGlobalUserTasksState(norm);
+            } else {
               const saved = store.get(STORAGE_KEYS.userProfile(session.user.email));
               if (saved && saved.tasksState) setGlobalUserTasksState(saved.tasksState);
             }
@@ -1812,9 +1823,13 @@ function App() {
           const { data } = await db.from('profiles').select('balance, tasks_state').eq('id', session.user.id).single();
           if (data) {
             if (data.balance !== undefined) setUserBalance(data.balance);
-            if (data.tasks_state) setGlobalUserTasksState(data.tasks_state);
-            const saved = store.get(STORAGE_KEYS.userProfile(session.user.email)) || {};
-            store.set(STORAGE_KEYS.userProfile(session.user.email), { ...saved, balance: data.balance, tasksState: data.tasks_state || {} });
+            if (data.tasks_state) {
+              const norm = {};
+              Object.keys(data.tasks_state).forEach(k => { norm[String(k)] = data.tasks_state[k]; });
+              setGlobalUserTasksState(norm);
+              const saved = store.get(STORAGE_KEYS.userProfile(session.user.email)) || {};
+              store.set(STORAGE_KEYS.userProfile(session.user.email), { ...saved, balance: data.balance, tasksState: norm });
+            }
           }
         } catch(e) { /* silent fail — keep current value */ }
       }
@@ -1845,7 +1860,11 @@ function App() {
         const { data } = await db.from('profiles').select('balance, tasks_state').eq('id', profile.id).single();
         if (data) {
           if (data.balance !== undefined) balance = data.balance;
-          if (data.tasks_state) tasksState = data.tasks_state;
+          if (data.tasks_state) {
+            // Normalise keys — Supabase jsonb stores keys as strings
+            const raw = data.tasks_state;
+            Object.keys(raw).forEach(k => { tasksState[String(k)] = raw[k]; });
+          }
         }
       } catch(e) {
         const saved = store.get(STORAGE_KEYS.userProfile(profile.email));
