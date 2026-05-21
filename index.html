@@ -1195,19 +1195,39 @@ function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, us
 
     const newBal = userBalance - amount;
     setUserBalance(newBal);
-    const req = { user: currentUser?.name || 'Unknown', email: currentUser?.email || '', plan, bank: withdrawalForm.bank, account: withdrawalForm.account, accountName: withdrawalForm.name, amount, status: 'pending', date: new Date().toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' }) };
+    // Use snake_case column names to match Supabase table exactly
+    const req = {
+      user_name: currentUser?.name || 'Unknown',
+      email: currentUser?.email || '',
+      plan,
+      bank: withdrawalForm.bank,
+      account_number: withdrawalForm.account,
+      account_name: withdrawalForm.name,
+      amount,
+      status: 'pending',
+      request_date: new Date().toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' })
+    };
     // Save to Supabase — triggers Realtime push to admin instantly
     try {
       const { data: inserted, error } = await db.from('withdrawals').insert([req]).select().single();
       if (error) throw error;
-      const saved = inserted || { ...req, id: Date.now() };
+      // Map back to display format
+      const saved = {
+        id: inserted.id,
+        user: inserted.user_name,
+        email: inserted.email,
+        plan: inserted.plan,
+        bank: inserted.bank,
+        account: inserted.account_number,
+        accountName: inserted.account_name,
+        amount: inserted.amount,
+        status: inserted.status,
+        date: inserted.request_date
+      };
       setWithdrawalsList(prev => [saved, ...prev]);
-      store.set(STORAGE_KEYS.WITHDRAWALS, [saved]);
     } catch(e) {
-      // Fallback: save locally if Supabase fails
-      const fallback = { ...req, id: Date.now() };
-      setWithdrawalsList(prev => { const u = [fallback, ...prev]; store.set(STORAGE_KEYS.WITHDRAWALS, u); return u; });
-      toast.warning('Sync Warning', 'Request saved locally — may not reflect on admin until reconnected.');
+      toast.error('Withdrawal Error', `Could not submit request: ${e.message}`);
+      return; // Stop — don't show success if it failed
     }
     if (currentUser?.id) {
       try { await db.from('profiles').update({ balance: newBal }).eq('id', currentUser.id); } catch (e) { console.error(e); }
@@ -1779,7 +1799,21 @@ function App() {
     // Load withdrawals from Supabase on mount
     try {
       const { data: wdData } = await db.from('withdrawals').select('*').order('id', { ascending: false });
-      if (wdData && Array.isArray(wdData)) setWithdrawalsList(wdData);
+      if (wdData && Array.isArray(wdData)) {
+        const mapped = wdData.map(w => ({
+          id: w.id,
+          user: w.user_name || w.user || 'Unknown',
+          email: w.email || '',
+          plan: w.plan || '',
+          bank: w.bank || '',
+          account: w.account_number || w.account || '',
+          accountName: w.account_name || w.accountName || '',
+          amount: w.amount,
+          status: w.status,
+          date: w.request_date || w.date || ''
+        }));
+        setWithdrawalsList(mapped);
+      }
     } catch(e) {
       const local = store.get(STORAGE_KEYS.WITHDRAWALS);
       if (local && Array.isArray(local)) setWithdrawalsList(local);
@@ -1875,7 +1909,21 @@ function App() {
     const fetchWithdrawals = async () => {
       try {
         const { data } = await db.from('withdrawals').select('*').order('id', { ascending: false });
-        if (data && Array.isArray(data)) setWithdrawalsList(data);
+        if (data && Array.isArray(data)) {
+          const mapped = data.map(w => ({
+            id: w.id,
+            user: w.user_name || w.user || 'Unknown',
+            email: w.email || '',
+            plan: w.plan || '',
+            bank: w.bank || '',
+            account: w.account_number || w.account || '',
+            accountName: w.account_name || w.accountName || '',
+            amount: w.amount,
+            status: w.status,
+            date: w.request_date || w.date || ''
+          }));
+          setWithdrawalsList(mapped);
+        }
       } catch(e) {}
     };
     const wdChannel = db.channel('withdrawals-changes')
