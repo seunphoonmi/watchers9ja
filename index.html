@@ -421,7 +421,7 @@
 const { useState, useEffect, useRef, useCallback } = React;
 
 const SUPABASE_URL = "https://wvvggkqsohzmbypdjexc.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2dmdna3Fzb2h6bWJ5cGRqZXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxODI5NDYsImV4cCI6MjA5NDc1ODk0Nn0.AJtvvZMA9tFSBXlwXLmZ3oEP5skFAl92sbv4Br2McKA";
+const SUPABASE_ANON_KEY = "sb_publishable_xO31WDsqpJT8UcLZAxZzzA_W-8r8BRJ";
 
 // ── Supabase init ──
 const { createClient } = window.supabase;
@@ -1115,6 +1115,27 @@ function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, us
     return saved?.historyLog || [{ label: 'Welcome Bonus — Account Activated', amount: isPremium ? 1000 : 500, type: 'credit', timestamp: 'Account Created' }];
   });
 
+  // ── Poll Supabase every 30s for new tasks (cross-device real-time) ──
+  useEffect(() => {
+    const syncTasks = async () => {
+      try {
+        // Admin saves tasks to localStorage + Supabase profiles won't have tasks table
+        // So we just re-read localStorage which admin device syncs via storage event
+        // For cross-device: if tasks were saved to Supabase, fetch them
+        const { data } = await db.from('tasks').select('*');
+        if (data && Array.isArray(data) && data.length > 0) {
+          setGlobalTasksList(data);
+          store.set(STORAGE_KEYS.TASKS, data);
+        }
+      } catch(e) {
+        // tasks table may not exist — fall back to localStorage silently
+      }
+    };
+    syncTasks();
+    const interval = setInterval(syncTasks, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     if (!currentUser?.id || page !== 'referrals') return;
     const fetchStats = async () => {
@@ -1433,7 +1454,15 @@ function AdminDashboard({ onLogout, globalTasksList, setGlobalTasksList, userMan
     e.preventDefault();
     if (!taskForm.title || !taskForm.url || !taskForm.reward) return;
     const newTask = { id: Date.now(), type: taskForm.type, title: taskForm.title, url: taskForm.url, reward: Number(taskForm.reward), plan: taskForm.plan };
-    setGlobalTasksList(prev => { const u = [...prev, newTask]; store.set(STORAGE_KEYS.TASKS, u); return u; });
+    setGlobalTasksList(prev => {
+      const u = [...prev, newTask];
+      store.set(STORAGE_KEYS.TASKS, u);
+      // Also save to Supabase so users on other devices get it
+      db.from('tasks').insert([newTask]).then(({ error }) => {
+        if (error) console.warn('Task sync to Supabase failed (tasks table may not exist):', error.message);
+      });
+      return u;
+    });
     setTaskForm({ type: 'video', title: '', url: '', reward: '', plan: 'both' });
     setTaskSaved(true);
     setTimeout(() => setTaskSaved(false), 3000);
@@ -1709,6 +1738,7 @@ function App() {
 
   // ── EFFECTS (all after state) ──
   useEffect(() => {
+    const init = async () => {
     const params = new URLSearchParams(window.location.search);
     const ref = params.get('ref');
     if (ref) { localStorage.setItem('9ja_active_ref_code', ref.trim()); }
@@ -1719,14 +1749,27 @@ function App() {
       setCurrentUser(session.user);
       setScreen('portal');
       if (session.role !== 'admin') {
+        // Fetch fresh balance from Supabase so cross-device changes show correctly
+        try {
+          const { data } = await db.from('profiles').select('balance').eq('id', session.user.id).single();
+          if (data && data.balance !== undefined) setUserBalance(data.balance);
+          else {
+            const saved = store.get(STORAGE_KEYS.userProfile(session.user.email));
+            if (saved && saved.balance !== undefined) setUserBalance(saved.balance);
+          }
+        } catch(e) {
+          const saved = store.get(STORAGE_KEYS.userProfile(session.user.email));
+          if (saved && saved.balance !== undefined) setUserBalance(saved.balance);
+        }
         const saved = store.get(STORAGE_KEYS.userProfile(session.user.email));
-        if (saved && saved.balance !== undefined) setUserBalance(saved.balance);
         if (saved && saved.tasksState) setGlobalUserTasksState(saved.tasksState);
       }
     }
+    };
+    init();
   }, []);
 
-  // Sync tasks across tabs
+  // Sync tasks across tabs (same device)
   useEffect(() => {
     const onTaskStorage = (e) => {
       if (e.key === STORAGE_KEYS.TASKS && e.newValue) {
@@ -1735,6 +1778,31 @@ function App() {
     };
     window.addEventListener('storage', onTaskStorage);
     return () => window.removeEventListener('storage', onTaskStorage);
+  }, []);
+
+  // ── Cross-device sync: re-fetch balance + tasks from Supabase when window regains focus ──
+  useEffect(() => {
+    const onFocus = async () => {
+      // Refresh tasks from localStorage (admin may have added via another device via Supabase)
+      const freshTasks = store.get(STORAGE_KEYS.TASKS);
+      if (freshTasks && Array.isArray(freshTasks)) setGlobalTasksList(freshTasks);
+
+      // Refresh user balance from Supabase
+      const session = store.get(STORAGE_KEYS.SESSION);
+      if (session && session.user && session.role !== 'admin') {
+        try {
+          const { data } = await db.from('profiles').select('balance').eq('id', session.user.id).single();
+          if (data && data.balance !== undefined) {
+            setUserBalance(data.balance);
+            // Also update localStorage so offline fallback is fresh
+            const saved = store.get(STORAGE_KEYS.userProfile(session.user.email)) || {};
+            store.set(STORAGE_KEYS.userProfile(session.user.email), { ...saved, balance: data.balance });
+          }
+        } catch(e) { /* silent fail — keep current value */ }
+      }
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
   }, []);
 
   // Sync withdrawals across tabs
@@ -1748,12 +1816,22 @@ function App() {
     return () => window.removeEventListener('storage', onWdStorage);
   }, []);
 
-  const handleLogin = (role, profile) => {
+  const handleLogin = async (role, profile) => {
     setRoleContext(role);
     setCurrentUser(profile);
     if (role !== 'admin') {
+      // Always fetch fresh balance from Supabase so cross-device changes are reflected
+      let balance = profile.balance || (role === 'premium' ? 1000 : 500);
+      try {
+        const { data } = await db.from('profiles').select('balance').eq('id', profile.id).single();
+        if (data && data.balance !== undefined) balance = data.balance;
+      } catch(e) {
+        // Fall back to localStorage if Supabase fails
+        const saved = store.get(STORAGE_KEYS.userProfile(profile.email));
+        if (saved && saved.balance !== undefined) balance = saved.balance;
+      }
+      setUserBalance(balance);
       const saved = store.get(STORAGE_KEYS.userProfile(profile.email));
-      setUserBalance(saved?.balance || profile.balance || (role === 'premium' ? 1000 : 500));
       setGlobalUserTasksState(saved?.tasksState || {});
     }
     store.set(STORAGE_KEYS.SESSION, { role, user: profile });
