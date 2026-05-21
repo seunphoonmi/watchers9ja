@@ -421,7 +421,7 @@
 const { useState, useEffect, useRef, useCallback } = React;
 
 const SUPABASE_URL = "https://wvvggkqsohzmbypdjexc.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2dmdna3Fzb2h6bWJ5cGRqZXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxODI5NDYsImV4cCI6MjA5NDc1ODk0Nn0.AJtvvZMA9tFSBXlwXLmZ3oEP5skFAl92sbv4Br2McKA";
+const SUPABASE_ANON_KEY = "sb_publishable_xO31WDsqpJT8UcLZAxZzzA_W-8r8BRJ";
 
 // ── Supabase init ──
 const { createClient } = window.supabase;
@@ -1167,13 +1167,20 @@ function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, us
 
   const handleTaskComplete = async (taskId, reward) => {
     const newBal = userBalance + reward;
-    setGlobalUserTasksState(prev => ({ ...prev, [taskId]: true }));
+    const newTasksState = { ...globalUserTasksState, [taskId]: true };
+    setGlobalUserTasksState(newTasksState);
     setUserBalance(newBal);
     const t = executableTasks.find(t => t.id === taskId);
     setHistoryLog(prev => [{ label: `Task: ${t?.title?.substring(0, 40) || 'Task'}`, amount: reward, type: 'credit', timestamp: 'Just Now' }, ...prev]);
+    // Save both balance AND tasksState to Supabase so refreshes and other devices stay in sync
     if (currentUser?.id) {
-      try { await db.from('profiles').update({ balance: newBal }).eq('id', currentUser.id); } catch (e) { console.error(e); }
+      try {
+        await db.from('profiles').update({ balance: newBal, tasks_state: newTasksState }).eq('id', currentUser.id);
+      } catch (e) { console.error(e); }
     }
+    // Also persist to localStorage as fallback
+    const saved = store.get(STORAGE_KEYS.userProfile(currentUser?.email || '')) || {};
+    store.set(STORAGE_KEYS.userProfile(currentUser?.email || ''), { ...saved, balance: newBal, tasksState: newTasksState });
   };
 
   const submitWithdrawal = async (e) => {
@@ -1756,18 +1763,24 @@ function App() {
       if (session.role !== 'admin') {
         // Fetch fresh balance from Supabase so cross-device changes show correctly
         try {
-          const { data } = await db.from('profiles').select('balance').eq('id', session.user.id).single();
-          if (data && data.balance !== undefined) setUserBalance(data.balance);
-          else {
+          const { data } = await db.from('profiles').select('balance, tasks_state').eq('id', session.user.id).single();
+          if (data) {
+            if (data.balance !== undefined) setUserBalance(data.balance);
+            if (data.tasks_state) setGlobalUserTasksState(data.tasks_state);
+            else {
+              const saved = store.get(STORAGE_KEYS.userProfile(session.user.email));
+              if (saved && saved.tasksState) setGlobalUserTasksState(saved.tasksState);
+            }
+          } else {
             const saved = store.get(STORAGE_KEYS.userProfile(session.user.email));
             if (saved && saved.balance !== undefined) setUserBalance(saved.balance);
+            if (saved && saved.tasksState) setGlobalUserTasksState(saved.tasksState);
           }
         } catch(e) {
           const saved = store.get(STORAGE_KEYS.userProfile(session.user.email));
           if (saved && saved.balance !== undefined) setUserBalance(saved.balance);
+          if (saved && saved.tasksState) setGlobalUserTasksState(saved.tasksState);
         }
-        const saved = store.get(STORAGE_KEYS.userProfile(session.user.email));
-        if (saved && saved.tasksState) setGlobalUserTasksState(saved.tasksState);
       }
     }
     };
@@ -1796,12 +1809,12 @@ function App() {
       const session = store.get(STORAGE_KEYS.SESSION);
       if (session && session.user && session.role !== 'admin') {
         try {
-          const { data } = await db.from('profiles').select('balance').eq('id', session.user.id).single();
-          if (data && data.balance !== undefined) {
-            setUserBalance(data.balance);
-            // Also update localStorage so offline fallback is fresh
+          const { data } = await db.from('profiles').select('balance, tasks_state').eq('id', session.user.id).single();
+          if (data) {
+            if (data.balance !== undefined) setUserBalance(data.balance);
+            if (data.tasks_state) setGlobalUserTasksState(data.tasks_state);
             const saved = store.get(STORAGE_KEYS.userProfile(session.user.email)) || {};
-            store.set(STORAGE_KEYS.userProfile(session.user.email), { ...saved, balance: data.balance });
+            store.set(STORAGE_KEYS.userProfile(session.user.email), { ...saved, balance: data.balance, tasksState: data.tasks_state || {} });
           }
         } catch(e) { /* silent fail — keep current value */ }
       }
@@ -1825,19 +1838,22 @@ function App() {
     setRoleContext(role);
     setCurrentUser(profile);
     if (role !== 'admin') {
-      // Always fetch fresh balance from Supabase so cross-device changes are reflected
+      // Always fetch fresh balance + tasksState from Supabase so cross-device state is correct
       let balance = profile.balance || (role === 'premium' ? 1000 : 500);
+      let tasksState = {};
       try {
-        const { data } = await db.from('profiles').select('balance').eq('id', profile.id).single();
-        if (data && data.balance !== undefined) balance = data.balance;
+        const { data } = await db.from('profiles').select('balance, tasks_state').eq('id', profile.id).single();
+        if (data) {
+          if (data.balance !== undefined) balance = data.balance;
+          if (data.tasks_state) tasksState = data.tasks_state;
+        }
       } catch(e) {
-        // Fall back to localStorage if Supabase fails
         const saved = store.get(STORAGE_KEYS.userProfile(profile.email));
         if (saved && saved.balance !== undefined) balance = saved.balance;
+        if (saved && saved.tasksState) tasksState = saved.tasksState;
       }
       setUserBalance(balance);
-      const saved = store.get(STORAGE_KEYS.userProfile(profile.email));
-      setGlobalUserTasksState(saved?.tasksState || {});
+      setGlobalUserTasksState(tasksState);
     }
     store.set(STORAGE_KEYS.SESSION, { role, user: profile });
     setScreen('portal');
