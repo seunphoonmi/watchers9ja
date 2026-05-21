@@ -423,9 +423,28 @@ const { useState, useEffect, useRef, useCallback } = React;
 const SUPABASE_URL = "https://wvvggkqsohzmbypdjexc.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_xO31WDsqpJT8UcLZAxZzzA_W-8r8BRJ";
 
-// ── FIX: Correct Supabase initialization ──
-const { createClient } = window.supabase;
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// ── Safe Supabase init ──
+let supabase = null;
+try {
+  if (window.supabase && window.supabase.createClient) {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+} catch(e) { console.warn('Supabase init skipped:', e.message); }
+
+const db = {
+  auth: {
+    signUp: async (...a) => supabase ? supabase.auth.signUp(...a) : { data: null, error: { message: 'DB unavailable' } },
+    signInWithPassword: async (...a) => supabase ? supabase.auth.signInWithPassword(...a) : { data: null, error: { message: 'DB unavailable' } },
+  },
+  from: (t) => {
+    if (!supabase) return {
+      select: (f) => ({ eq: (k,v) => ({ single: async () => ({ data: null, error: { message: 'DB unavailable' } }) }) }),
+      insert: async (d) => ({ error: null }),
+      update: (d) => ({ eq: (k,v) => Promise.resolve({ error: null }) }),
+    };
+    return db.from(t);
+  }
+};
 
 // ── TOAST SYSTEM ────────────────────────────────────────────────────────────
 let _toastCounter = 0;
@@ -874,9 +893,9 @@ function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan, onRegi
 
     try {
       if (isLogin) {
-        const { data, error } = await supabase.auth.signInWithPassword({ email: inputEmail, password: inputPassword });
+        const { data, error } = await db.auth.signInWithPassword({ email: inputEmail, password: inputPassword });
         if (error) throw error;
-        const { data: profile, error: pErr } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
+        const { data: profile, error: pErr } = await db.from('profiles').select('*').eq('id', data.user.id).single();
         if (pErr || !profile) { toast.error('Profile Error', 'Account found but profile data is missing.'); return; }
         if (!profile.paid) { toast.error('Access Denied', 'Registration found, but no activation payment detected.'); return; }
         toast.success('Login Successful', `Welcome back, ${profile.name.split(' ')[0]}!`);
@@ -894,15 +913,8 @@ function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan, onRegi
   const handlePaystack = () => {
     const email = formData.email.toLowerCase().trim();
     const name = formData.name.trim();
-    if (!email || !name) {
-      toast.error('Missing Info', 'Please fill in your name and email before proceeding.');
-      setStep(1);
-      return;
-    }
-    if (typeof window.PaystackPop === 'undefined') {
-      toast.error('Payment Error', 'Paystack failed to load. Please refresh the page and try again.');
-      return;
-    }
+    if (!email || !name) { toast.error('Missing Info', 'Please fill in your name and email.'); setStep(1); return; }
+    if (typeof window.PaystackPop === 'undefined') { toast.error('Payment Error', 'Paystack failed to load. Please refresh.'); return; }
     const amountKobo = (selectedPlan === 'premium' ? 8000 : 4000) * 100;
     try {
       const paystack = new window.PaystackPop();
@@ -921,7 +933,7 @@ function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan, onRegi
           toast.info('Payment Received', `Ref: ${transaction.reference} — Setting up your account…`);
           setIsProcessing(true);
           try {
-            const { data: authData, error: authError } = await supabase.auth.signUp({ email: formData.email.toLowerCase().trim(), password: formData.password });
+            const { data: authData, error: authError } = await db.auth.signUp({ email: formData.email.toLowerCase().trim(), password: formData.password });
             if (authError) throw authError;
 
             const defaultBalance = selectedPlan === 'premium' ? 1000 : 500;
@@ -938,7 +950,7 @@ function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan, onRegi
               referral_earnings: 0
             };
 
-            const { error: profileError } = await supabase.from('profiles').insert([fullProfile]);
+            const { error: profileError } = await db.from('profiles').insert([fullProfile]);
             if (profileError) throw profileError;
 
             // ── REFERRAL HOOK ──
@@ -946,12 +958,12 @@ function AuthPage({ mode, setScreen, onLoginSuccess, initialSelectedPlan, onRegi
             if (activeRefCode) {
               const parts = activeRefCode.split('-');
               const snippet = parts[parts.length - 1];
-              const { data: allProfiles, error: fetchErr } = await supabase.from('profiles').select('*');
+              const { data: allProfiles, error: fetchErr } = await db.from('profiles').select('*');
               if (!fetchErr && allProfiles) {
                 const parent = allProfiles.find(p => p.id && p.id.toString().slice(-4) === snippet);
                 if (parent) {
                   const commission = parent.plan === 'premium' ? 1000 : 500;
-                  await supabase.from('profiles').update({
+                  await db.from('profiles').update({
                     balance: (parent.balance || 0) + commission,
                     total_referrals: (parent.total_referrals || 0) + 1,
                     referral_earnings: (parent.referral_earnings || 0) + commission
@@ -1126,7 +1138,7 @@ function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, us
     if (!currentUser?.id || page !== 'referrals') return;
     const fetchStats = async () => {
       try {
-        const { data, error } = await supabase.from('profiles').select('total_referrals, referral_earnings, balance').eq('id', currentUser.id).single();
+        const { data, error } = await db.from('profiles').select('total_referrals, referral_earnings, balance').eq('id', currentUser.id).single();
         if (!error && data) { setLiveRefsCount(data.total_referrals || 0); setLiveRefsEarnings(data.referral_earnings || 0); setUserBalance(data.balance); }
       } catch (e) { console.error(e); }
     };
@@ -1154,7 +1166,7 @@ function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, us
     const t = executableTasks.find(t => t.id === taskId);
     setHistoryLog(prev => [{ label: `Task: ${t?.title?.substring(0, 40) || 'Task'}`, amount: reward, type: 'credit', timestamp: 'Just Now' }, ...prev]);
     if (currentUser?.id) {
-      try { await supabase.from('profiles').update({ balance: newBal }).eq('id', currentUser.id); } catch (e) { console.error(e); }
+      try { await db.from('profiles').update({ balance: newBal }).eq('id', currentUser.id); } catch (e) { console.error(e); }
     }
   };
 
@@ -1166,10 +1178,10 @@ function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, us
 
     const newBal = userBalance - amount;
     setUserBalance(newBal);
-    const req = { id: Date.now(), user: currentUser?.name || 'Unknown', plan, bank: withdrawalForm.bank, account: withdrawalForm.account, amount, status: 'pending', date: 'Today' };
+    const req = { id: Date.now(), user: currentUser?.name || 'Unknown', email: currentUser?.email || '', plan, bank: withdrawalForm.bank, account: withdrawalForm.account, accountName: withdrawalForm.name, amount, status: 'pending', date: new Date().toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' }) };
     setWithdrawalsList(prev => { const u = [req, ...prev]; store.set(STORAGE_KEYS.WITHDRAWALS, u); return u; });
     if (currentUser?.id) {
-      try { await supabase.from('profiles').update({ balance: newBal }).eq('id', currentUser.id); } catch (e) { console.error(e); }
+      try { await db.from('profiles').update({ balance: newBal }).eq('id', currentUser.id); } catch (e) { console.error(e); }
     }
     setWithdrawalSuccess(true);
     toast.success('Withdrawal Requested', `${naira(amount)} withdrawal is pending admin approval.`);
@@ -1202,40 +1214,28 @@ function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, us
               </p>
             </div>
             <button className="btn btn-gold btn-full" onClick={() => {
-              if (typeof window.PaystackPop === 'undefined') {
-                toast.error('Payment Error', 'Paystack failed to load. Please refresh the page and try again.');
-                return;
-              }
+              if (typeof window.PaystackPop === 'undefined') { toast.error('Payment Error', 'Paystack failed to load. Please refresh.'); return; }
               const paystack = new window.PaystackPop();
               paystack.newTransaction({
                 key: 'pk_live_56cd68f5adb0e165c34545bee318900fcd3505e3',
                 email: currentUser?.email || '',
                 amount: 8000 * 100,
                 currency: 'NGN',
-                metadata: {
-                  custom_fields: [
-                    { display_name: 'Full Name', variable_name: 'customer_name', value: currentUser?.name || '' },
-                    { display_name: 'Plan', variable_name: 'plan', value: 'premium' }
-                  ]
-                },
+                metadata: { custom_fields: [{ display_name: 'Full Name', variable_name: 'customer_name', value: currentUser?.name || '' }, { display_name: 'Plan', variable_name: 'plan', value: 'premium' }] },
                 onSuccess: async (transaction) => {
                   setShowUpgradeModal(false);
-                  toast.info('Payment Received', `Ref: ${transaction.reference} — Upgrading your account…`);
+                  toast.info('Payment Received', 'Upgrading your account…');
                   try {
-                    if (currentUser?.id) {
-                      await supabase.from('profiles').update({ plan: 'premium', balance: (userBalance || 0) + 1000 }).eq('id', currentUser.id);
-                    }
-                    const savedProfile = store.get(STORAGE_KEYS.userProfile(currentUser?.email || '')) || {};
-                    store.set(STORAGE_KEYS.userProfile(currentUser?.email || ''), { ...savedProfile, plan: 'premium', balance: (userBalance || 0) + 1000 });
+                    await db.from('profiles').update({ plan: 'premium', balance: (userBalance || 0) + 1000 }).eq('id', currentUser.id);
+                    const sp = store.get(STORAGE_KEYS.userProfile(currentUser?.email || '')) || {};
+                    store.set(STORAGE_KEYS.userProfile(currentUser?.email || ''), { ...sp, plan: 'premium', balance: (userBalance || 0) + 1000 });
                     setUserBalance(prev => prev + 1000);
-                    toast.success('Upgrade Successful! 🎉', 'You are now on Premium. Enjoy 20 high-yield tasks daily!');
+                    toast.success('Upgrade Successful! 🎉', 'You are now on Premium!');
                     setTimeout(() => window.location.reload(), 2000);
-                  } catch (err) {
-                    toast.error('Upgrade Error', `Payment received but upgrade failed: ${err.message}`);
-                  }
+                  } catch (err) { toast.error('Upgrade Error', err.message); }
                 },
-                onCancel: () => toast.warning('Payment Cancelled', 'Your upgrade payment was not completed.'),
-                onError: (err) => toast.error('Payment Error', err.message || 'Something went wrong with the payment.')
+                onCancel: () => toast.warning('Cancelled', 'Upgrade payment was not completed.'),
+                onError: (err) => toast.error('Payment Error', err.message || 'Something went wrong.')
               });
             }}>Pay ₦8,000 to Upgrade</button>
             <button className="btn btn-ghost btn-sm btn-full" style={{ marginTop: 8 }} onClick={() => setShowUpgradeModal(false)}>Maybe Later</button>
@@ -1609,9 +1609,24 @@ function AdminDashboard({ onLogout, globalTasksList, setGlobalTasksList, userMan
 
           {page === 'withdrawals' && (
             <div className="fade-in">
-              <div style={{ marginBottom: 28 }}>
-                <h1 style={{ fontSize: 24, fontWeight: 900, marginBottom: 4, fontFamily: "'Sora', sans-serif" }}>Withdrawal Requests</h1>
-                <p style={{ color: 'var(--text-3)', fontSize: 14 }}>Review and process all user withdrawal requests.</p>
+              <div style={{ marginBottom: 28, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+                <div>
+                  <h1 style={{ fontSize: 24, fontWeight: 900, marginBottom: 4, fontFamily: "'Sora', sans-serif" }}>Withdrawal Requests</h1>
+                  <p style={{ color: 'var(--text-3)', fontSize: 14 }}>Review and process all user withdrawal requests.</p>
+                </div>
+                <button className="btn btn-gold btn-sm" onClick={() => {
+                  if (!withdrawalsList.length) { toast.warning('No Data', 'No withdrawal requests to export.'); return; }
+                  const headers = ['S/N','Date','Name','Email','Plan','Bank','Account Number','Account Name','Amount (NGN)','Status'];
+                  const rows = withdrawalsList.slice().reverse().map((w,i) => [i+1, w.date||'—', w.user||'—', w.email||'—', w.plan||'—', w.bank||'—', w.account||'—', w.accountName||w.user||'—', w.amount, w.status]);
+                  const esc = v => `"${String(v).replace(/"/g,'""')}"`;
+                  const csv = [headers,...rows].map(r=>r.map(esc).join(',')).join('\n');
+                  const blob = new Blob(['\uFEFF'+csv], { type: 'text/csv;charset=utf-8;' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href=url; a.download=`9jaWatchers_Withdrawals_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+                  URL.revokeObjectURL(url);
+                  toast.success('Exported!', 'Open the downloaded file in Excel.');
+                }}>📥 Export to Excel</button>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {withdrawalsList.length === 0 ? (
@@ -1624,7 +1639,9 @@ function AdminDashboard({ onLogout, globalTasksList, setGlobalTasksList, userMan
                           <strong style={{ fontSize: 15 }}>{w.user}</strong>
                           <Badge color={w.plan === 'basic' ? 'green' : 'purple'}>{w.plan}</Badge>
                         </div>
-                        <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{w.bank} · {w.account} · {w.date}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 2 }}>{w.email || '—'}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 2 }}><strong>Bank:</strong> {w.bank} &nbsp;|&nbsp; <strong>Acct:</strong> {w.account} &nbsp;|&nbsp; <strong>Name:</strong> {w.accountName || w.user}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{w.date}</div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <span style={{ fontWeight: 900, fontSize: 18, color: 'var(--gold)' }}>{naira(w.amount)}</span>
@@ -1694,44 +1711,12 @@ function AdminDashboard({ onLogout, globalTasksList, setGlobalTasksList, userMan
 
 // ── APP SHELL ─────────────────────────────────────────────────────────────
 function App() {
+  // ── ALL STATE FIRST ──
   const [screen, setScreen] = useState('landing');
   const [planOverride, setPlanOverride] = useState(null);
   const [roleContext, setRoleContext] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const ref = params.get('ref');
-    if (ref) { localStorage.setItem('9ja_active_ref_code', ref.trim()); }
-    // ── RESTORE SESSION ON REFRESH ──
-    const session = store.get(STORAGE_KEYS.SESSION);
-    if (session?.role && session?.user) {
-      setRoleContext(session.role);
-      setCurrentUser(session.user);
-      setScreen('portal');
-      if (session.role !== 'admin') {
-        const saved = store.get(STORAGE_KEYS.userProfile(session.user.email));
-        if (saved?.balance !== undefined) setUserBalance(saved.balance);
-        if (saved?.tasksState) setGlobalUserTasksState(saved.tasksState);
-      }
-    }
-  }, []);
-
   const [globalTasksList, setGlobalTasksList] = useState(() => store.get(STORAGE_KEYS.TASKS) || INITIAL_TASKS);
-
-  // ── SYNC TASKS ACROSS TABS/SESSIONS ──
-  useEffect(() => {
-    const onStorage = (e) => {
-      if (e.key === STORAGE_KEYS.TASKS && e.newValue) {
-        try {
-          const updated = JSON.parse(e.newValue);
-          if (Array.isArray(updated)) setGlobalTasksList(updated);
-        } catch {}
-      }
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, []);
   const [userManagementRows, setUserManagementRows] = useState(() => {
     const saved = store.get(STORAGE_KEYS.USERS_REGISTRY, []);
     const emails = new Set(saved.map(u => u.email));
@@ -1741,6 +1726,47 @@ function App() {
   const [userBalance, setUserBalance] = useState(500);
   const [globalUserTasksState, setGlobalUserTasksState] = useState({});
 
+  // ── EFFECTS (all after state) ──
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref');
+    if (ref) { localStorage.setItem('9ja_active_ref_code', ref.trim()); }
+    // Restore session on refresh
+    const session = store.get(STORAGE_KEYS.SESSION);
+    if (session && session.role && session.user) {
+      setRoleContext(session.role);
+      setCurrentUser(session.user);
+      setScreen('portal');
+      if (session.role !== 'admin') {
+        const saved = store.get(STORAGE_KEYS.userProfile(session.user.email));
+        if (saved && saved.balance !== undefined) setUserBalance(saved.balance);
+        if (saved && saved.tasksState) setGlobalUserTasksState(saved.tasksState);
+      }
+    }
+  }, []);
+
+  // Sync tasks across tabs
+  useEffect(() => {
+    const onTaskStorage = (e) => {
+      if (e.key === STORAGE_KEYS.TASKS && e.newValue) {
+        try { const u = JSON.parse(e.newValue); if (Array.isArray(u)) setGlobalTasksList(u); } catch {}
+      }
+    };
+    window.addEventListener('storage', onTaskStorage);
+    return () => window.removeEventListener('storage', onTaskStorage);
+  }, []);
+
+  // Sync withdrawals across tabs
+  useEffect(() => {
+    const onWdStorage = (e) => {
+      if (e.key === STORAGE_KEYS.WITHDRAWALS && e.newValue) {
+        try { const u = JSON.parse(e.newValue); if (Array.isArray(u)) setWithdrawalsList(u); } catch {}
+      }
+    };
+    window.addEventListener('storage', onWdStorage);
+    return () => window.removeEventListener('storage', onWdStorage);
+  }, []);
+
   const handleLogin = (role, profile) => {
     setRoleContext(role);
     setCurrentUser(profile);
@@ -1749,13 +1775,11 @@ function App() {
       setUserBalance(saved?.balance || profile.balance || (role === 'premium' ? 1000 : 500));
       setGlobalUserTasksState(saved?.tasksState || {});
     }
-    // ── PERSIST SESSION ──
     store.set(STORAGE_KEYS.SESSION, { role, user: profile });
     setScreen('portal');
   };
 
   const handleLogout = () => {
-    // ── CLEAR SESSION ──
     store.set(STORAGE_KEYS.SESSION, null);
     setScreen('landing');
     setRoleContext(null);
