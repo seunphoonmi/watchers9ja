@@ -549,11 +549,7 @@ const INITIAL_USERS = [
   { id: 3, name: 'Tunde Balogun', email: 'tunde@email.com',  plan: 'basic',   balance: 1800,  joined: '12 May', tasks: 5,  refs: 0, status: 'suspended' },
 ];
 
-const INITIAL_WITHDRAWALS = [
-  { id: 1, user: 'Chidi Okafor',  plan: 'basic',   bank: 'GTBank',     account: '0123456789', amount: 2500, status: 'pending',  date: 'Today' },
-  { id: 2, user: 'Amaka Nwosu',   plan: 'premium', bank: 'Zenith Bank', account: '9876543210', amount: 5000, status: 'pending',  date: 'Today' },
-  { id: 3, user: 'Tunde Balogun', plan: 'basic',   bank: 'First Bank',  account: '3456789012', amount: 3000, status: 'approved', date: 'Yesterday' },
-];
+const INITIAL_WITHDRAWALS = [];
 
 // ── UI PRIMITIVES ─────────────────────────────────────────────────────────
 
@@ -1199,8 +1195,20 @@ function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, us
 
     const newBal = userBalance - amount;
     setUserBalance(newBal);
-    const req = { id: Date.now(), user: currentUser?.name || 'Unknown', email: currentUser?.email || '', plan, bank: withdrawalForm.bank, account: withdrawalForm.account, accountName: withdrawalForm.name, amount, status: 'pending', date: new Date().toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' }) };
-    setWithdrawalsList(prev => { const u = [req, ...prev]; store.set(STORAGE_KEYS.WITHDRAWALS, u); return u; });
+    const req = { user: currentUser?.name || 'Unknown', email: currentUser?.email || '', plan, bank: withdrawalForm.bank, account: withdrawalForm.account, accountName: withdrawalForm.name, amount, status: 'pending', date: new Date().toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' }) };
+    // Save to Supabase — triggers Realtime push to admin instantly
+    try {
+      const { data: inserted, error } = await db.from('withdrawals').insert([req]).select().single();
+      if (error) throw error;
+      const saved = inserted || { ...req, id: Date.now() };
+      setWithdrawalsList(prev => [saved, ...prev]);
+      store.set(STORAGE_KEYS.WITHDRAWALS, [saved]);
+    } catch(e) {
+      // Fallback: save locally if Supabase fails
+      const fallback = { ...req, id: Date.now() };
+      setWithdrawalsList(prev => { const u = [fallback, ...prev]; store.set(STORAGE_KEYS.WITHDRAWALS, u); return u; });
+      toast.warning('Sync Warning', 'Request saved locally — may not reflect on admin until reconnected.');
+    }
     if (currentUser?.id) {
       try { await db.from('profiles').update({ balance: newBal }).eq('id', currentUser.id); } catch (e) { console.error(e); }
     }
@@ -1454,10 +1462,16 @@ function AdminDashboard({ onLogout, globalTasksList, setGlobalTasksList, userMan
 
   const approveWithdrawal = (id) => {
     setWithdrawalsList(prev => { const u = prev.map(w => w.id === id ? { ...w, status: 'approved' } : w); store.set(STORAGE_KEYS.WITHDRAWALS, u); return u; });
+    db.from('withdrawals').update({ status: 'approved' }).eq('id', id).then(({ error }) => {
+      if (error) console.warn('Approval sync failed:', error.message);
+    });
     toast.success('Withdrawal Approved', 'The payout has been approved and will be processed.');
   };
   const rejectWithdrawal = (id) => {
     setWithdrawalsList(prev => { const u = prev.map(w => w.id === id ? { ...w, status: 'rejected' } : w); store.set(STORAGE_KEYS.WITHDRAWALS, u); return u; });
+    db.from('withdrawals').update({ status: 'rejected' }).eq('id', id).then(({ error }) => {
+      if (error) console.warn('Rejection sync failed:', error.message);
+    });
     toast.warning('Withdrawal Rejected', 'The withdrawal request has been declined.');
   };
   const removeTask = (id) => {
@@ -1752,7 +1766,7 @@ function App() {
     const emails = new Set(saved.map(u => u.email));
     return [...saved, ...INITIAL_USERS.filter(u => !emails.has(u.email))];
   });
-  const [withdrawalsList, setWithdrawalsList] = useState(() => store.get(STORAGE_KEYS.WITHDRAWALS) || INITIAL_WITHDRAWALS);
+  const [withdrawalsList, setWithdrawalsList] = useState([]);
   const [userBalance, setUserBalance] = useState(500);
   const [globalUserTasksState, setGlobalUserTasksState] = useState({});
 
@@ -1762,6 +1776,15 @@ function App() {
     const params = new URLSearchParams(window.location.search);
     const ref = params.get('ref');
     if (ref) { localStorage.setItem('9ja_active_ref_code', ref.trim()); }
+    // Load withdrawals from Supabase on mount
+    try {
+      const { data: wdData } = await db.from('withdrawals').select('*').order('id', { ascending: false });
+      if (wdData && Array.isArray(wdData)) setWithdrawalsList(wdData);
+    } catch(e) {
+      const local = store.get(STORAGE_KEYS.WITHDRAWALS);
+      if (local && Array.isArray(local)) setWithdrawalsList(local);
+    }
+
     // Restore session on refresh
     const session = store.get(STORAGE_KEYS.SESSION);
     if (session && session.role && session.user) {
@@ -1838,15 +1861,33 @@ function App() {
     return () => window.removeEventListener('focus', onFocus);
   }, []);
 
-  // Sync withdrawals across tabs
+  // Sync withdrawals: localStorage (same device) + Supabase Realtime (cross-device)
   useEffect(() => {
+    // Same-device sync via storage event
     const onWdStorage = (e) => {
       if (e.key === STORAGE_KEYS.WITHDRAWALS && e.newValue) {
         try { const u = JSON.parse(e.newValue); if (Array.isArray(u)) setWithdrawalsList(u); } catch {}
       }
     };
     window.addEventListener('storage', onWdStorage);
-    return () => window.removeEventListener('storage', onWdStorage);
+
+    // Cross-device sync via Supabase Realtime
+    const fetchWithdrawals = async () => {
+      try {
+        const { data } = await db.from('withdrawals').select('*').order('id', { ascending: false });
+        if (data && Array.isArray(data)) setWithdrawalsList(data);
+      } catch(e) {}
+    };
+    const wdChannel = db.channel('withdrawals-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'withdrawals' }, () => {
+        fetchWithdrawals();
+      })
+      .subscribe();
+
+    return () => {
+      window.removeEventListener('storage', onWdStorage);
+      db.removeChannel(wdChannel);
+    };
   }, []);
 
   const handleLogin = async (role, profile) => {
