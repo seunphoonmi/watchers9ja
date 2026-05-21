@@ -423,28 +423,9 @@ const { useState, useEffect, useRef, useCallback } = React;
 const SUPABASE_URL = "https://wvvggkqsohzmbypdjexc.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2dmdna3Fzb2h6bWJ5cGRqZXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxODI5NDYsImV4cCI6MjA5NDc1ODk0Nn0.AJtvvZMA9tFSBXlwXLmZ3oEP5skFAl92sbv4Br2McKA";
 
-// ── Safe Supabase init ──
-let supabase = null;
-try {
-  if (window.supabase && window.supabase.createClient) {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  }
-} catch(e) { console.warn('Supabase init skipped:', e.message); }
-
-const db = {
-  auth: {
-    signUp: async (...a) => supabase ? supabase.auth.signUp(...a) : { data: null, error: { message: 'DB unavailable' } },
-    signInWithPassword: async (...a) => supabase ? supabase.auth.signInWithPassword(...a) : { data: null, error: { message: 'DB unavailable' } },
-  },
-  from: (t) => {
-    if (!supabase) return {
-      select: (f) => ({ eq: (k,v) => ({ single: async () => ({ data: null, error: { message: 'DB unavailable' } }) }) }),
-      insert: async (d) => ({ error: null }),
-      update: (d) => ({ eq: (k,v) => Promise.resolve({ error: null }) }),
-    };
-    return db.from(t);
-  }
-};
+// ── Supabase init ──
+const { createClient } = window.supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ── TOAST SYSTEM ────────────────────────────────────────────────────────────
 let _toastCounter = 0;
