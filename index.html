@@ -1115,25 +1115,29 @@ function UserDashboard({ plan, onLogout, globalTasksList, setGlobalTasksList, us
     return saved?.historyLog || [{ label: 'Welcome Bonus — Account Activated', amount: isPremium ? 1000 : 500, type: 'credit', timestamp: 'Account Created' }];
   });
 
-  // ── Poll Supabase every 30s for new tasks (cross-device real-time) ──
+  // ── Real-time task sync via Supabase Realtime ──
   useEffect(() => {
-    const syncTasks = async () => {
+    // Initial fetch on mount
+    const fetchTasks = async () => {
       try {
-        // Admin saves tasks to localStorage + Supabase profiles won't have tasks table
-        // So we just re-read localStorage which admin device syncs via storage event
-        // For cross-device: if tasks were saved to Supabase, fetch them
-        const { data } = await db.from('tasks').select('*');
-        if (data && Array.isArray(data) && data.length > 0) {
+        const { data, error } = await db.from('tasks').select('*').order('id', { ascending: true });
+        if (!error && data && data.length > 0) {
           setGlobalTasksList(data);
           store.set(STORAGE_KEYS.TASKS, data);
         }
-      } catch(e) {
-        // tasks table may not exist — fall back to localStorage silently
-      }
+      } catch(e) {}
     };
-    syncTasks();
-    const interval = setInterval(syncTasks, 30000);
-    return () => clearInterval(interval);
+    fetchTasks();
+
+    // Subscribe to real-time INSERT/DELETE on tasks table
+    const channel = db.channel('tasks-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, (payload) => {
+        // Any change to the tasks table — re-fetch full list immediately
+        fetchTasks();
+      })
+      .subscribe();
+
+    return () => { db.removeChannel(channel); };
   }, []);
 
   useEffect(() => {
@@ -1443,6 +1447,10 @@ function AdminDashboard({ onLogout, globalTasksList, setGlobalTasksList, userMan
   };
   const removeTask = (id) => {
     setGlobalTasksList(prev => { const u = prev.filter(t => t.id !== id); store.set(STORAGE_KEYS.TASKS, u); return u; });
+    // Also delete from Supabase so other devices reflect removal instantly
+    db.from('tasks').delete().eq('id', id).then(({ error }) => {
+      if (error) console.warn('Task delete from Supabase failed:', error.message);
+    });
     toast.info('Task Removed', 'The task has been removed from the platform.');
   };
   const toggleSuspend = (id, currentStatus) => {
@@ -1454,14 +1462,11 @@ function AdminDashboard({ onLogout, globalTasksList, setGlobalTasksList, userMan
     e.preventDefault();
     if (!taskForm.title || !taskForm.url || !taskForm.reward) return;
     const newTask = { id: Date.now(), type: taskForm.type, title: taskForm.title, url: taskForm.url, reward: Number(taskForm.reward), plan: taskForm.plan };
-    setGlobalTasksList(prev => {
-      const u = [...prev, newTask];
-      store.set(STORAGE_KEYS.TASKS, u);
-      // Also save to Supabase so users on other devices get it
-      db.from('tasks').insert([newTask]).then(({ error }) => {
-        if (error) console.warn('Task sync to Supabase failed (tasks table may not exist):', error.message);
-      });
-      return u;
+    // Save to localStorage immediately for same-device users
+    setGlobalTasksList(prev => { const u = [...prev, newTask]; store.set(STORAGE_KEYS.TASKS, u); return u; });
+    // Save to Supabase — triggers Realtime push to ALL connected devices instantly
+    db.from('tasks').insert([newTask]).then(({ error }) => {
+      if (error) toast.error('Sync Error', 'Task saved locally but failed to sync across devices: ' + error.message);
     });
     setTaskForm({ type: 'video', title: '', url: '', reward: '', plan: 'both' });
     setTaskSaved(true);
