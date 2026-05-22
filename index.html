@@ -618,8 +618,17 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
     });
 
     const ch = db.channel(`user-wd-${currentUser.email}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'withdrawals' }, () => fetchUserWD())
-      .subscribe();
+  .on(
+    'postgres_changes',
+    {
+      event: 'UPDATE',           // only care about status updates
+      schema: 'public',
+      table: 'withdrawals',
+      filter: `email=eq.${currentUser.email}`  // ← this is the key fix
+    },
+    () => fetchUserWD()
+  )
+  .subscribe();
 
     return () => {
       authSub.unsubscribe();
