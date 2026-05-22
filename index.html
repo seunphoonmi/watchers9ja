@@ -871,40 +871,41 @@ function AdminDashboard({onLogout,globalTasksList,setGlobalTasksList,userManagem
   // A dedicated Realtime channel inside this component fires AFTER the admin
   // is already authenticated, so it subscribes with the correct credentials.
   // ─────────────────────────────────────────────────────────────────────────
-  useEffect(()=>{
-    const fetchUsers=async()=>{
-      try{
-        const {data,error}=await adminDb.from('profiles').select('*').order('id',{ascending:false});
-        if(!error&&data){
-          setUserManagementRows(data.map(p=>({id:p.id,name:p.name||'Unknown',email:p.email||'',plan:p.plan||'basic',balance:p.balance||0,joined:p.joined||'—',tasks:0,refs:p.total_referrals||0,status:p.status||'active'})));
-        }
-      }catch(e){console.error('fetchUsers:',e);}
-    };
-    fetchUsers();
-    const ch=adminDb.channel('admin-profiles-rt')
-      .on('postgres_changes',{event:'*',schema:'public',table:'profiles'},()=>fetchUsers())
-      .subscribe();
-    return()=>adminDb.removeChannel(ch);
-  },[]);
+ // AFTER — use db (anon client with authenticated JWT)
+useEffect(()=>{
+  const fetchUsers=async()=>{
+    try{
+      const {data,error}=await db.from('profiles').select('*').order('id',{ascending:false});
+      if(!error&&data){
+        setUserManagementRows(data.map(p=>({
+          id:p.id, name:p.name||'Unknown', email:p.email||'',
+          plan:p.plan||'basic', balance:p.balance||0,
+          joined:p.joined||'—', tasks:0,
+          refs:p.total_referrals||0, status:p.status||'active'
+        })));
+      }
+    }catch(e){console.error('fetchUsers:',e);}
+  };
+  fetchUsers();
+  const ch=db.channel('admin-profiles-rt')
+    .on('postgres_changes',{event:'*',schema:'public',table:'profiles'},()=>fetchUsers())
+    .subscribe();
+  return()=>db.removeChannel(ch);
+},[]);
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // FIX: Admin withdrawal realtime channel lives HERE (inside AdminDashboard)
-  // NOT in the App root. This ensures the channel is created after admin login
-  // so the service-role credentials are active when the subscription opens.
-  // ─────────────────────────────────────────────────────────────────────────
-  useEffect(()=>{
-    const fetchWD=async()=>{
-      try{
-        const {data,error}=await adminDb.from('withdrawals').select('*').order('id',{ascending:false});
-        if(!error&&data)setWithdrawalsList(data.map(mapWD));
-      }catch(e){console.error('fetchWD:',e);}
-    };
-    fetchWD(); // immediate fetch on admin mount
-    const ch=adminDb.channel('admin-withdrawals-rt')
-      .on('postgres_changes',{event:'*',schema:'public',table:'withdrawals'},()=>fetchWD())
-      .subscribe();
-    return()=>adminDb.removeChannel(ch);
-  },[]);
+useEffect(()=>{
+  const fetchWD=async()=>{
+    try{
+      const {data,error}=await db.from('withdrawals').select('*').order('id',{ascending:false});
+      if(!error&&data)setWithdrawalsList(data.map(mapWD));
+    }catch(e){console.error('fetchWD:',e);}
+  };
+  fetchWD();
+  const ch=db.channel('admin-withdrawals-rt')
+    .on('postgres_changes',{event:'*',schema:'public',table:'withdrawals'},()=>fetchWD())
+    .subscribe();
+  return()=>db.removeChannel(ch);
+},[]);
 
   // Export helpers
   const exportUsersXLS=()=>{
@@ -924,39 +925,30 @@ function AdminDashboard({onLogout,globalTasksList,setGlobalTasksList,userManagem
     exportPDF(['S/N','Date','Name','Email','Plan','Bank','Account','Amount (₦)','Status'],withdrawalsList.slice().reverse().map((w,i)=>[i+1,w.date,w.user,w.email,w.plan,w.bank,w.account,`₦${Number(w.amount).toLocaleString()}`,w.status]),'9jaWatchers_Withdrawals','9jaWatchers — Withdrawal Requests Report');
   };
 
-  // Admin actions — all via adminDb (bypasses RLS)
-  const approve=id=>{
-    setWithdrawalsList(p=>p.map(w=>w.id===id?{...w,status:'approved'}:w));
-    adminDb.from('withdrawals').update({status:'approved'}).eq('id',id);
-    toast.success('Approved','Payout approved.');
-  };
-  const reject=id=>{
-    setWithdrawalsList(p=>p.map(w=>w.id===id?{...w,status:'rejected'}:w));
-    adminDb.from('withdrawals').update({status:'rejected'}).eq('id',id);
-    toast.warning('Rejected','Request declined.');
-  };
-  const removeTask=id=>{
-    setGlobalTasksList(p=>{const u=p.filter(t=>t.id!==id);store.set(SK.TASKS,u);return u;});
-    adminDb.from('tasks').delete().eq('id',id);
-    toast.info('Task Removed','Removed from platform.');
-  };
-  const toggleSuspend=(id,cur)=>{
-    const ns=cur==='active'?'suspended':'active';
-    setUserManagementRows(p=>p.map(u=>u.id===id?{...u,status:ns}:u));
-    adminDb.from('profiles').update({status:ns}).eq('id',id);
-    toast.info(cur==='active'?'User Suspended':'User Unsuspended','');
-  };
-  const submitTask=e=>{
-    e.preventDefault();
-    if(!taskForm.title||!taskForm.url||!taskForm.reward)return;
-    const t={id:Date.now(),type:taskForm.type,title:taskForm.title,url:taskForm.url,reward:Number(taskForm.reward),plan:taskForm.plan};
-    setGlobalTasksList(p=>{const u=[...p,t];store.set(SK.TASKS,u);return u;});
-    adminDb.from('tasks').insert([t]).then(({error})=>{if(error)toast.error('Sync Error',error.message);});
-    setTaskForm({type:'video',title:'',url:'',reward:'',plan:'both'});
-    setTaskSaved(true);setTimeout(()=>setTaskSaved(false),3000);
-    toast.success('Task Published!',`"${t.title.substring(0,40)}" is now live.`);
-  };
-
+// approve, reject, toggleSuspend, removeTask, submitTask
+const approve=id=>{
+  setWithdrawalsList(p=>p.map(w=>w.id===id?{...w,status:'approved'}:w));
+  db.from('withdrawals').update({status:'approved'}).eq('id',id);  // ← db not adminDb
+  toast.success('Approved','Payout approved.');
+};
+const reject=id=>{
+  setWithdrawalsList(p=>p.map(w=>w.id===id?{...w,status:'rejected'}:w));
+  db.from('withdrawals').update({status:'rejected'}).eq('id',id);  // ← db not adminDb
+  toast.warning('Rejected','Request declined.');
+};
+const toggleSuspend=(id,cur)=>{
+  const ns=cur==='active'?'suspended':'active';
+  setUserManagementRows(p=>p.map(u=>u.id===id?{...u,status:ns}:u));
+  db.from('profiles').update({status:ns}).eq('id',id);  // ← db not adminDb
+  toast.info(cur==='active'?'User Suspended':'User Unsuspended','');
+};
+const removeTask=id=>{
+  setGlobalTasksList(p=>{const u=p.filter(t=>t.id!==id);store.set(SK.TASKS,u);return u;});
+  db.from('tasks').delete().eq('id',id);  // ← db not adminDb
+  toast.info('Task Removed','Removed from platform.');
+};
+// In submitTask:
+db.from('tasks').insert([t]).then(...)  // ← db not adminDb
   const adminNav=[
     {id:'overview',icon:'📊',label:'Overview'},
     {id:'tasks',icon:'📋',label:'Task Manager'},
