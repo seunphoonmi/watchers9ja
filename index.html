@@ -110,10 +110,8 @@
     .step-dot{width:8px;height:8px;border-radius:50%;background:var(--border);}
     .withdraw-info-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;}
     .withdraw-info-row:last-child{border-bottom:none;}
-    /* Live pulsing dot */
     .live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;animation:pulse 1.8s ease-in-out infinite;}
     @keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.4;transform:scale(1.4);}}
-    /* Spinner */
     .loader-ring{width:20px;height:20px;border:3px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;flex-shrink:0;}
     .loader-wrap{display:flex;align-items:center;gap:10px;padding:40px;justify-content:center;color:var(--text-3);font-size:14px;}
   </style>
@@ -126,13 +124,8 @@ const { useState, useEffect, useRef, useCallback } = React;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SUPABASE CLIENTS
-//
 // db      → anon key  — used by regular users (respects RLS)
 // adminDb → service-role key — used ONLY by admin panel (bypasses RLS entirely)
-//
-// ⚠️  IMPORTANT: Replace SERVICE_KEY below with your actual service-role key.
-//     Supabase Dashboard → Project Settings → API → service_role (secret)
-//     Keep this key private — never expose it to end-users.
 // ─────────────────────────────────────────────────────────────────────────────
 const SUPABASE_URL = "https://wvvggkqsohzmbypdjexc.supabase.co";
 const ANON_KEY     = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2dmdna3Fzb2h6bWJ5cGRqZXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxODI5NDYsImV4cCI6MjA5NDc1ODk0Nn0.AJtvvZMA9tFSBXlwXLmZ3oEP5skFAl92sbv4Br2McKA";
@@ -225,8 +218,6 @@ const INIT_TASKS=[
   {id:20,type:'like',title:'Like Andela Nigeria Careers Post',url:'https://linkedin.com',reward:120,plan:'premium'},
 ];
 
-// ── MAP WITHDRAWAL ROW ─────────────────────────────────────────────────────
-// Central helper so both admin and user code normalise columns the same way
 const mapWD = w => ({
   id: w.id,
   user: w.user_name || w.user || 'Unknown',
@@ -456,7 +447,6 @@ function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterN
             const profile={id:authData.user.id,name:form.name,email:form.email.toLowerCase().trim(),plan:selPlan,balance:bal,paid:true,status:'active',joined:new Date().toLocaleDateString('en-NG',{day:'2-digit',month:'short',year:'numeric'}),total_referrals:0,referral_earnings:0};
             const {error:pErr}=await db.from('profiles').insert([profile]);
             if(pErr)throw pErr;
-            // Referral
             const ref=localStorage.getItem('9ja_active_ref_code');
             if(ref){
               const snip=ref.split('-').pop();
@@ -535,7 +525,7 @@ function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterN
 }
 
 // ── USER DASHBOARD ─────────────────────────────────────────────────────────
-function UserDashboard({plan,onLogout,globalTasksList,setGlobalTasksList,userBalance,setUserBalance,globalUserTasksState,setGlobalUserTasksState,currentUser}){
+function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasksState,setGlobalUserTasksState,currentUser}){
   const [page,setPage]=useState('dashboard');
   const [wdSuccess,setWdSuccess]=useState(false);
   const [wdForm,setWdForm]=useState({bank:'',account:'',name:currentUser?.name||'',amount:''});
@@ -544,9 +534,48 @@ function UserDashboard({plan,onLogout,globalTasksList,setGlobalTasksList,userBal
   const [liveEarn,setLiveEarn]=useState(currentUser?.referral_earnings||0);
 
   // ─────────────────────────────────────────────────────────────────────────
-  // FIX: User withdrawal history has its OWN state + fetch.
-  // It uses the anon db client (RLS allows users to SELECT their own rows)
-  // and an onAuthStateChange listener so data persists correctly after refresh.
+  // FIX 1: Tasks are now LOCAL state inside UserDashboard.
+  // They are fetched fresh on mount, then kept live via Realtime.
+  // Using a ref for the fetch function prevents stale-closure issues in
+  // the Realtime callback — this is the core fix for task sync.
+  // ─────────────────────────────────────────────────────────────────────────
+  const [tasksList, setTasksList] = useState(() => store.get(SK.TASKS) || []);
+  const tasksListRef = useRef(tasksList);
+  // Keep ref in sync with state so the realtime callback always sees fresh data
+  useEffect(() => { tasksListRef.current = tasksList; }, [tasksList]);
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        const { data, error } = await db.from('tasks').select('*').order('id', { ascending: true });
+        if (!error && data && data.length > 0) {
+          setTasksList(data);
+          store.set(SK.TASKS, data);
+        }
+      } catch(e) {}
+    };
+
+    fetchTasks();
+
+    // Realtime channel for tasks — uses a stable named channel
+    // The callback re-fetches from DB so it always gets the full fresh list
+    // (avoiding stale closure problems with direct state manipulation)
+    const ch = db.channel('tasks-realtime-user')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
+        fetchTasks(); // always re-fetch — never mutate state directly in realtime callback
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          // Channel is live — do a fresh fetch to catch anything missed during setup
+          fetchTasks();
+        }
+      });
+
+    return () => { db.removeChannel(ch); };
+  }, []); // Empty deps — runs once on mount, channel handles live updates
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // FIX 2: User withdrawal history — same fix as before (correct)
   // ─────────────────────────────────────────────────────────────────────────
   const [userWD, setUserWD] = useState([]);
   const [wdLoading, setWdLoading] = useState(false);
@@ -555,11 +584,8 @@ function UserDashboard({plan,onLogout,globalTasksList,setGlobalTasksList,userBal
     if (!currentUser?.email) return;
 
     const fetchUserWD = async () => {
-      // Wait for the Supabase JWT to be ready before querying.
-      // On page refresh the JWT restores asynchronously — without this check
-      // the query runs as anon, RLS returns [] and the list stays empty.
       const { data: { session } } = await db.auth.getSession();
-      if (!session) return; // onAuthStateChange will trigger a retry
+      if (!session) return;
 
       setWdLoading(true);
       try {
@@ -583,18 +609,14 @@ function UserDashboard({plan,onLogout,globalTasksList,setGlobalTasksList,userBal
       finally { setWdLoading(false); }
     };
 
-    // Initial fetch
     fetchUserWD();
 
-    // Re-fetch once Supabase restores the session after a browser refresh.
-    // INITIAL_SESSION is the key event — it fires when the persisted JWT is ready.
     const { data: { subscription: authSub } } = db.auth.onAuthStateChange((event, session) => {
       if (session && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
         fetchUserWD();
       }
     });
 
-    // Realtime: re-fetch whenever any withdrawal row changes (e.g. admin approves/rejects)
     const ch = db.channel(`user-wd-${currentUser.email}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'withdrawals' }, () => fetchUserWD())
       .subscribe();
@@ -606,24 +628,11 @@ function UserDashboard({plan,onLogout,globalTasksList,setGlobalTasksList,userBal
   }, [currentUser?.email]);
 
   const isPrem=plan==='premium';
-  const myTasks=globalTasksList.filter(t=>t.plan==='both'||t.plan===plan);
+  const myTasks=tasksList.filter(t=>t.plan==='both'||t.plan===plan);
   const [histLog,setHistLog]=useState(()=>{
     const s=store.get(SK.UP(currentUser?.email||''));
     return s?.historyLog||[{label:'Welcome Bonus — Account Activated',amount:isPrem?1000:500,type:'credit',timestamp:'Account Created'}];
   });
-
-  // Task realtime sync
-  useEffect(()=>{
-    const fetchTasks=async()=>{
-      try{
-        const {data}=await db.from('tasks').select('*').order('id',{ascending:true});
-        if(data&&data.length>0){setGlobalTasksList(data);store.set(SK.TASKS,data);}
-      }catch(e){}
-    };
-    fetchTasks();
-    const ch=db.channel('tasks-user').on('postgres_changes',{event:'*',schema:'public',table:'tasks'},()=>fetchTasks()).subscribe();
-    return()=>db.removeChannel(ch);
-  },[]);
 
   useEffect(()=>{
     if(!currentUser?.id||page!=='referrals')return;
@@ -670,7 +679,6 @@ function UserDashboard({plan,onLogout,globalTasksList,setGlobalTasksList,userBal
     try{
       const {data:ins,error}=await db.from('withdrawals').insert([req]).select().single();
       if(error)throw error;
-      // Append to local user WD list immediately for instant UI feedback
       setUserWD(p=>[{id:ins.id,amount:ins.amount,bank:ins.bank,account:ins.account_number,accountName:ins.account_name,status:ins.status,date:ins.request_date},...p]);
     }catch(e){toast.error('Withdrawal Error',e.message);setUserBalance(userBalance);return;}
     if(currentUser?.id){try{await db.from('profiles').update({balance:newBal}).eq('id',currentUser.id);}catch(e){}}
@@ -712,7 +720,6 @@ function UserDashboard({plan,onLogout,globalTasksList,setGlobalTasksList,userBal
       <div className="main-scroll">
         <div className="main-content" style={{padding:'32px 36px',maxWidth:900,margin:'0 auto'}}>
 
-          {/* DASHBOARD */}
           {page==='dashboard'&&(<div className="fade-in">
             <div style={{marginBottom:28}}><h1 style={{fontSize:26,fontWeight:900,marginBottom:4,fontFamily:"'Sora',sans-serif"}}>Hey, {currentUser?.name?.split(' ')[0]||'Earner'} 👋</h1><p style={{color:'var(--text-3)',fontSize:14}}>Here's your earning overview for today.</p></div>
             <div className="stats-row" style={{display:'flex',gap:16,marginBottom:28,flexWrap:'wrap'}}>
@@ -725,13 +732,18 @@ function UserDashboard({plan,onLogout,globalTasksList,setGlobalTasksList,userBal
               <div className="progress-track"><div className="progress-fill" style={{width:`${(doneCount/(myTasks.length||1))*100}%`,background:'var(--green)'}}/></div>
               <div style={{display:'flex',justifyContent:'space-between',marginTop:8,fontSize:12,color:'var(--text-3)',fontWeight:600}}><span>{doneCount} completed</span><span>{myTasks.length-doneCount} remaining</span></div>
             </div>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}><h2 style={{fontSize:17,fontWeight:800}}>Available Tasks</h2><Badge color={isPrem?'purple':'green'}>{isPrem?'Premium':'Basic'} Plan</Badge></div>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+              <div style={{display:'flex',alignItems:'center',gap:10}}>
+                <h2 style={{fontSize:17,fontWeight:800}}>Available Tasks</h2>
+                <div style={{display:'flex',alignItems:'center',gap:5,fontSize:12,color:'var(--green)',fontWeight:700}}><span className="live-dot"/>Live</div>
+              </div>
+              <Badge color={isPrem?'purple':'green'}>{isPrem?'Premium':'Basic'} Plan</Badge>
+            </div>
             <div style={{display:'flex',flexDirection:'column',gap:10}}>
               {myTasks.length===0?<div className="card" style={{textAlign:'center',padding:40,color:'var(--text-3)'}}>No tasks available. Check back soon!</div>:myTasks.map(task=><TaskCard key={task.id} task={task} onComplete={handleTaskDone} globalUserTasksState={globalUserTasksState}/>)}
             </div>
           </div>)}
 
-          {/* WITHDRAW */}
           {page==='withdraw'&&(<div className="fade-in">
             <div style={{marginBottom:28}}><h1 style={{fontSize:24,fontWeight:900,marginBottom:4,fontFamily:"'Sora',sans-serif"}}>Withdraw Funds</h1><p style={{color:'var(--text-3)',fontSize:14}}>Request a withdrawal to your Nigerian bank account.</p></div>
             {wdSuccess?(
@@ -767,7 +779,6 @@ function UserDashboard({plan,onLogout,globalTasksList,setGlobalTasksList,userBal
             )}
           </div>)}
 
-          {/* WITHDRAWAL HISTORY — uses dedicated userWD state */}
           {page==='wd-history'&&(<div className="fade-in">
             <div style={{marginBottom:28,display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:12}}>
               <div>
@@ -815,7 +826,6 @@ function UserDashboard({plan,onLogout,globalTasksList,setGlobalTasksList,userBal
             )}
           </div>)}
 
-          {/* REFERRALS */}
           {page==='referrals'&&(<div className="fade-in">
             <div style={{marginBottom:28}}><h1 style={{fontSize:24,fontWeight:900,marginBottom:4,fontFamily:"'Sora',sans-serif"}}>Referral Earnings</h1><p style={{color:'var(--text-3)',fontSize:14}}>Share your link — earn {isPrem?'₦1,000':'₦500'} for every person who registers.</p></div>
             <div className="card" style={{marginBottom:20}}>
@@ -835,7 +845,6 @@ function UserDashboard({plan,onLogout,globalTasksList,setGlobalTasksList,userBal
             </div>
           </div>)}
 
-          {/* TRANSACTION HISTORY */}
           {page==='history'&&(<div className="fade-in">
             <div style={{marginBottom:28}}><h1 style={{fontSize:24,fontWeight:900,marginBottom:4,fontFamily:"'Sora',sans-serif"}}>Transaction History</h1><p style={{color:'var(--text-3)',fontSize:14}}>All credits and debits on your account.</p></div>
             <div style={{display:'flex',flexDirection:'column',gap:10}}>
@@ -857,56 +866,84 @@ function UserDashboard({plan,onLogout,globalTasksList,setGlobalTasksList,userBal
 }
 
 // ── ADMIN DASHBOARD ────────────────────────────────────────────────────────
-function AdminDashboard({onLogout,globalTasksList,setGlobalTasksList,userManagementRows,setUserManagementRows,withdrawalsList,setWithdrawalsList}){
+function AdminDashboard({onLogout,userManagementRows,setUserManagementRows}){
   const [page,setPage]=useState('overview');
   const [taskForm,setTaskForm]=useState({type:'video',title:'',url:'',reward:'',plan:'both'});
   const [taskSaved,setTaskSaved]=useState(false);
   const [confirm,setConfirm]=useState({open:false});
 
-  const pending=withdrawalsList.filter(w=>w.status==='pending');
-  const totalPaid=withdrawalsList.filter(w=>w.status==='approved').reduce((s,w)=>s+w.amount,0);
+  // ─────────────────────────────────────────────────────────────────────────
+  // FIX 3: Both tasks AND withdrawals are now LOCAL state in AdminDashboard.
+  // They are never passed in from App — admin fetches everything itself via
+  // adminDb (service-role) AFTER the component mounts (i.e. after admin login).
+  // This is the root fix for the admin not seeing new withdrawal requests.
+  // ─────────────────────────────────────────────────────────────────────────
+  const [globalTasksList, setGlobalTasksList] = useState(() => store.get(SK.TASKS) || []);
+  const [withdrawalsList, setWithdrawalsList] = useState([]);
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // FIX: Admin fetches ALL users via adminDb (service-role bypasses RLS).
-  // A dedicated Realtime channel inside this component fires AFTER the admin
-  // is already authenticated, so it subscribes with the correct credentials.
-  // ─────────────────────────────────────────────────────────────────────────
-  useEffect(()=>{
-    const fetchUsers=async()=>{
-      try{
-        const {data,error}=await adminDb.from('profiles').select('*').order('id',{ascending:false});
-        if(!error&&data){
-          setUserManagementRows(data.map(p=>({id:p.id,name:p.name||'Unknown',email:p.email||'',plan:p.plan||'basic',balance:p.balance||0,joined:p.joined||'—',tasks:0,refs:p.total_referrals||0,status:p.status||'active'})));
+  // Tasks — admin also subscribes to tasks realtime so they see their own changes reflected
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        const { data, error } = await adminDb.from('tasks').select('*').order('id', { ascending: true });
+        if (!error && data) { setGlobalTasksList(data); store.set(SK.TASKS, data); }
+      } catch(e) {}
+    };
+    fetchTasks();
+    const ch = adminDb.channel('admin-tasks-rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => fetchTasks())
+      .subscribe();
+    return () => adminDb.removeChannel(ch);
+  }, []);
+
+  // Withdrawals — fetched via adminDb so RLS is bypassed and ALL rows are returned
+  useEffect(() => {
+    const fetchWD = async () => {
+      try {
+        const { data, error } = await adminDb.from('withdrawals').select('*').order('id', { ascending: false });
+        if (!error && data) setWithdrawalsList(data.map(mapWD));
+      } catch(e) { console.error('fetchWD:', e); }
+    };
+    fetchWD();
+
+    // ── KEY FIX: This channel is created HERE, inside AdminDashboard, ──────
+    // which only mounts AFTER admin login. At that point adminDb has valid
+    // service-role credentials, so the Realtime subscription succeeds.
+    // Previously this channel was created at App root before login → fail.
+    // ─────────────────────────────────────────────────────────────────────
+    const ch = adminDb.channel('admin-withdrawals-rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'withdrawals' }, () => fetchWD())
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') fetchWD(); // catch anything missed during subscribe
+      });
+    return () => adminDb.removeChannel(ch);
+  }, []);
+
+  // Users
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const { data, error } = await adminDb.from('profiles').select('*').order('id', { ascending: false });
+        if (!error && data) {
+          setUserManagementRows(data.map(p => ({
+            id: p.id, name: p.name || 'Unknown', email: p.email || '',
+            plan: p.plan || 'basic', balance: p.balance || 0,
+            joined: p.joined || '—', tasks: 0, refs: p.total_referrals || 0,
+            status: p.status || 'active'
+          })));
         }
-      }catch(e){console.error('fetchUsers:',e);}
+      } catch(e) { console.error('fetchUsers:', e); }
     };
     fetchUsers();
-    const ch=adminDb.channel('admin-profiles-rt')
-      .on('postgres_changes',{event:'*',schema:'public',table:'profiles'},()=>fetchUsers())
+    const ch = adminDb.channel('admin-profiles-rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => fetchUsers())
       .subscribe();
-    return()=>adminDb.removeChannel(ch);
-  },[]);
+    return () => adminDb.removeChannel(ch);
+  }, []);
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // FIX: Admin withdrawal realtime channel lives HERE (inside AdminDashboard)
-  // NOT in the App root. This ensures the channel is created after admin login
-  // so the service-role credentials are active when the subscription opens.
-  // ─────────────────────────────────────────────────────────────────────────
-  useEffect(()=>{
-    const fetchWD=async()=>{
-      try{
-        const {data,error}=await adminDb.from('withdrawals').select('*').order('id',{ascending:false});
-        if(!error&&data)setWithdrawalsList(data.map(mapWD));
-      }catch(e){console.error('fetchWD:',e);}
-    };
-    fetchWD(); // immediate fetch on admin mount
-    const ch=adminDb.channel('admin-withdrawals-rt')
-      .on('postgres_changes',{event:'*',schema:'public',table:'withdrawals'},()=>fetchWD())
-      .subscribe();
-    return()=>adminDb.removeChannel(ch);
-  },[]);
+  const pending = withdrawalsList.filter(w => w.status === 'pending');
+  const totalPaid = withdrawalsList.filter(w => w.status === 'approved').reduce((s, w) => s + w.amount, 0);
 
-  // Export helpers
   const exportUsersXLS=()=>{
     if(!userManagementRows.length){toast.warning('No Data','No users to export.');return;}
     exportXLS(userManagementRows.map((u,i)=>({'S/N':i+1,'Full Name':u.name,'Email':u.email,'Plan':u.plan.toUpperCase(),'Balance (NGN)':u.balance,'Referrals':u.refs,'Status':u.status,'Date Joined':u.joined})),'9jaWatchers_Users','Users');
@@ -924,37 +961,38 @@ function AdminDashboard({onLogout,globalTasksList,setGlobalTasksList,userManagem
     exportPDF(['S/N','Date','Name','Email','Plan','Bank','Account','Amount (₦)','Status'],withdrawalsList.slice().reverse().map((w,i)=>[i+1,w.date,w.user,w.email,w.plan,w.bank,w.account,`₦${Number(w.amount).toLocaleString()}`,w.status]),'9jaWatchers_Withdrawals','9jaWatchers — Withdrawal Requests Report');
   };
 
-  // Admin actions — all via adminDb (bypasses RLS)
-  const approve=id=>{
-    setWithdrawalsList(p=>p.map(w=>w.id===id?{...w,status:'approved'}:w));
-    adminDb.from('withdrawals').update({status:'approved'}).eq('id',id);
-    toast.success('Approved','Payout approved.');
+  const approve = id => {
+    setWithdrawalsList(p => p.map(w => w.id === id ? { ...w, status: 'approved' } : w));
+    adminDb.from('withdrawals').update({ status: 'approved' }).eq('id', id);
+    toast.success('Approved', 'Payout approved.');
   };
-  const reject=id=>{
-    setWithdrawalsList(p=>p.map(w=>w.id===id?{...w,status:'rejected'}:w));
-    adminDb.from('withdrawals').update({status:'rejected'}).eq('id',id);
-    toast.warning('Rejected','Request declined.');
+  const reject = id => {
+    setWithdrawalsList(p => p.map(w => w.id === id ? { ...w, status: 'rejected' } : w));
+    adminDb.from('withdrawals').update({ status: 'rejected' }).eq('id', id);
+    toast.warning('Rejected', 'Request declined.');
   };
-  const removeTask=id=>{
-    setGlobalTasksList(p=>{const u=p.filter(t=>t.id!==id);store.set(SK.TASKS,u);return u;});
-    adminDb.from('tasks').delete().eq('id',id);
-    toast.info('Task Removed','Removed from platform.');
+  const removeTask = id => {
+    setGlobalTasksList(p => { const u = p.filter(t => t.id !== id); store.set(SK.TASKS, u); return u; });
+    adminDb.from('tasks').delete().eq('id', id);
+    toast.info('Task Removed', 'Removed from platform.');
   };
-  const toggleSuspend=(id,cur)=>{
-    const ns=cur==='active'?'suspended':'active';
-    setUserManagementRows(p=>p.map(u=>u.id===id?{...u,status:ns}:u));
-    adminDb.from('profiles').update({status:ns}).eq('id',id);
-    toast.info(cur==='active'?'User Suspended':'User Unsuspended','');
+  const toggleSuspend = (id, cur) => {
+    const ns = cur === 'active' ? 'suspended' : 'active';
+    setUserManagementRows(p => p.map(u => u.id === id ? { ...u, status: ns } : u));
+    adminDb.from('profiles').update({ status: ns }).eq('id', id);
+    toast.info(cur === 'active' ? 'User Suspended' : 'User Unsuspended', '');
   };
-  const submitTask=e=>{
+  const submitTask = e => {
     e.preventDefault();
-    if(!taskForm.title||!taskForm.url||!taskForm.reward)return;
-    const t={id:Date.now(),type:taskForm.type,title:taskForm.title,url:taskForm.url,reward:Number(taskForm.reward),plan:taskForm.plan};
-    setGlobalTasksList(p=>{const u=[...p,t];store.set(SK.TASKS,u);return u;});
-    adminDb.from('tasks').insert([t]).then(({error})=>{if(error)toast.error('Sync Error',error.message);});
-    setTaskForm({type:'video',title:'',url:'',reward:'',plan:'both'});
-    setTaskSaved(true);setTimeout(()=>setTaskSaved(false),3000);
-    toast.success('Task Published!',`"${t.title.substring(0,40)}" is now live.`);
+    if (!taskForm.title || !taskForm.url || !taskForm.reward) return;
+    const t = { type: taskForm.type, title: taskForm.title, url: taskForm.url, reward: Number(taskForm.reward), plan: taskForm.plan };
+    // Insert to DB — the realtime channel will pick it up and update local state automatically
+    adminDb.from('tasks').insert([t]).then(({ error }) => {
+      if (error) toast.error('Sync Error', error.message);
+    });
+    setTaskForm({ type: 'video', title: '', url: '', reward: '', plan: 'both' });
+    setTaskSaved(true); setTimeout(() => setTaskSaved(false), 3000);
+    toast.success('Task Published!', `"${t.title.substring(0, 40)}" is now live.`);
   };
 
   const adminNav=[
@@ -971,7 +1009,6 @@ function AdminDashboard({onLogout,globalTasksList,setGlobalTasksList,userManagem
       <div className="main-scroll">
         <div className="main-content" style={{padding:'32px 36px',maxWidth:960,margin:'0 auto'}}>
 
-          {/* OVERVIEW */}
           {page==='overview'&&(<div className="fade-in">
             <div style={{marginBottom:28}}><h1 style={{fontSize:26,fontWeight:900,marginBottom:4,fontFamily:"'Sora',sans-serif"}}>Admin Dashboard 🛠️</h1><p style={{color:'var(--text-3)',fontSize:14}}>Platform health and key metrics at a glance.</p></div>
             <div className="stats-row" style={{display:'flex',gap:16,marginBottom:28,flexWrap:'wrap'}}>
@@ -1009,7 +1046,6 @@ function AdminDashboard({onLogout,globalTasksList,setGlobalTasksList,userManagem
             )}
           </div>)}
 
-          {/* TASK MANAGER */}
           {page==='tasks'&&(<div className="fade-in">
             <div style={{marginBottom:28}}><h1 style={{fontSize:24,fontWeight:900,marginBottom:4,fontFamily:"'Sora',sans-serif"}}>Task Manager</h1><p style={{color:'var(--text-3)',fontSize:14}}>Create and manage tasks shown to users.</p></div>
             <div className="admin-task-layout" style={{display:'flex',gap:28,alignItems:'flex-start',flexWrap:'wrap'}}>
@@ -1019,14 +1055,17 @@ function AdminDashboard({onLogout,globalTasksList,setGlobalTasksList,userManagem
                 <div style={{display:'flex',flexDirection:'column',gap:12}}>
                   <div><label style={{fontSize:12,fontWeight:700,color:'var(--text-2)',display:'block',marginBottom:4}}>Task Type</label><select className="input" value={taskForm.type} onChange={e=>setTaskForm(p=>({...p,type:e.target.value}))}><option value="video">Watch Video</option><option value="follow">Follow Account</option><option value="like">Like Post</option><option value="comment">Comment on Post</option></select></div>
                   <div><label style={{fontSize:12,fontWeight:700,color:'var(--text-2)',display:'block',marginBottom:4}}>Task Title</label><input required type="text" className="input" placeholder="e.g., Watch MTN 2026 Brand Video" value={taskForm.title} onChange={e=>setTaskForm(p=>({...p,title:e.target.value}))}/></div>
-                  <div><label style={{fontSize:12,fontWeight:700,color:'var(--text-2)',display:'block',marginBottom:4}}>Destination URL</label><input required type="url" className="input" placeholder="https://..." value={taskForm.url} onChange={e=>setTaskForm(p=>({...p,url:e.target.value}))}/></div>
+                  <div><label style={{fontSize:12,fontWeight:700,color:'var(--text-2)',display:'block',marginBottom:6}}>Destination URL</label><input required type="url" className="input" placeholder="https://..." value={taskForm.url} onChange={e=>setTaskForm(p=>({...p,url:e.target.value}))}/></div>
                   <div><label style={{fontSize:12,fontWeight:700,color:'var(--text-2)',display:'block',marginBottom:4}}>Reward Amount (₦)</label><input required type="number" min={50} className="input" placeholder="e.g., 150" value={taskForm.reward} onChange={e=>setTaskForm(p=>({...p,reward:e.target.value}))}/></div>
                   <div><label style={{fontSize:12,fontWeight:700,color:'var(--text-2)',display:'block',marginBottom:4}}>Audience</label><select className="input" value={taskForm.plan} onChange={e=>setTaskForm(p=>({...p,plan:e.target.value}))}><option value="both">All Users</option><option value="basic">Basic Only</option><option value="premium">Premium Only</option></select></div>
                   <button className="btn btn-primary btn-full" type="submit" style={{marginTop:4}}>Publish Task</button>
                 </div>
               </form>
               <div style={{flex:1.5,minWidth:300}}>
-                <h3 style={{fontWeight:800,fontSize:15,marginBottom:14}}>Live Tasks ({globalTasksList.length})</h3>
+                <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
+                  <h3 style={{fontWeight:800,fontSize:15}}>Live Tasks ({globalTasksList.length})</h3>
+                  <div style={{display:'flex',alignItems:'center',gap:5,fontSize:12,color:'var(--green)',fontWeight:700}}><span className="live-dot"/>Live</div>
+                </div>
                 <div style={{display:'flex',flexDirection:'column',gap:10,maxHeight:560,overflowY:'auto'}}>
                   {globalTasksList.map(task=>{
                     const tc=TASK_CLR[task.type]||TASK_CLR.video;
@@ -1047,7 +1086,6 @@ function AdminDashboard({onLogout,globalTasksList,setGlobalTasksList,userManagem
             </div>
           </div>)}
 
-          {/* WITHDRAWALS */}
           {page==='withdrawals'&&(<div className="fade-in">
             <div style={{marginBottom:28,display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:12}}>
               <div>
@@ -1058,7 +1096,7 @@ function AdminDashboard({onLogout,globalTasksList,setGlobalTasksList,userManagem
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:14}}>
               {withdrawalsList.length===0?(<div className="card" style={{textAlign:'center',padding:40,color:'var(--text-3)'}}>No withdrawal requests yet.</div>)
-              :withdrawalsList.slice().reverse().map(w=>(
+              :withdrawalsList.map(w=>(
                 <div key={w.id} className="card" style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:14}}>
                   <div>
                     <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}><strong style={{fontSize:15}}>{w.user}</strong><Badge color={w.plan==='basic'?'green':'purple'}>{w.plan}</Badge></div>
@@ -1076,7 +1114,6 @@ function AdminDashboard({onLogout,globalTasksList,setGlobalTasksList,userManagem
             </div>
           </div>)}
 
-          {/* USERS */}
           {page==='users'&&(<div className="fade-in">
             <div style={{marginBottom:28,display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:12}}>
               <div>
@@ -1114,25 +1151,25 @@ function App(){
   const [planOverride,setPlanOverride]=useState(null);
   const [roleContext,setRoleContext]=useState(null);
   const [currentUser,setCurrentUser]=useState(null);
-  const [globalTasksList,setGlobalTasksList]=useState(()=>store.get(SK.TASKS)||INIT_TASKS);
   const [userManagementRows,setUserManagementRows]=useState([]);
-  const [withdrawalsList,setWithdrawalsList]=useState([]);
   const [userBalance,setUserBalance]=useState(500);
   const [globalUserTasksState,setGlobalUserTasksState]=useState({});
+
+  // NOTE: globalTasksList, withdrawalsList and their setters are NO LONGER
+  // managed at App root. They live inside UserDashboard and AdminDashboard
+  // respectively. This eliminates the stale-channel / pre-login subscription bugs.
 
   useEffect(()=>{
     const init=async()=>{
       const ref=new URLSearchParams(window.location.search).get('ref');
       if(ref)localStorage.setItem('9ja_active_ref_code',ref.trim());
 
-      // Restore session from storage
       const session=store.get(SK.SESSION);
       if(session&&session.role&&session.user){
         setRoleContext(session.role);
         setCurrentUser(session.user);
         setScreen('portal');
         if(session.role!=='admin'){
-          // Fetch fresh balance + tasks state using anon client (RLS allows own row)
           try{
             const {data}=await db.from('profiles').select('balance,tasks_state').eq('id',session.user.id).single();
             if(data){
@@ -1149,15 +1186,8 @@ function App(){
     };
     init();
 
-    // ─────────────────────────────────────────────────────────────────────
-    // FIX: onAuthStateChange at App level handles the case where Supabase
-    // restores its JWT asynchronously on refresh AFTER init() already ran.
-    // Without this, a refresh could leave the user logged in via localStorage
-    // but with stale/missing data because the JWT wasn't ready yet.
-    // ─────────────────────────────────────────────────────────────────────
     const { data: { subscription } } = db.auth.onAuthStateChange(async(event, session) => {
       if (event === 'INITIAL_SESSION' && session) {
-        // Session just became available — re-sync balance and tasks state
         const stored = store.get(SK.SESSION);
         if (stored && stored.role !== 'admin' && stored.user) {
           try {
@@ -1184,7 +1214,6 @@ function App(){
     return () => subscription.unsubscribe();
   },[]);
 
-  // Re-sync balance/tasks on window regaining focus
   useEffect(()=>{
     const onFocus=async()=>{
       const session=store.get(SK.SESSION);
@@ -1237,8 +1266,8 @@ function App(){
     {screen==='login'&&<AuthPage mode="login" setScreen={setScreen} onLoginSuccess={handleLogin}/>}
     {screen==='signup'&&<AuthPage mode="signup" setScreen={setScreen} onLoginSuccess={handleLogin} initialSelectedPlan={planOverride} onRegisterNewUser={handleNewUser}/>}
     {screen==='portal'&&(roleContext==='admin'
-      ?<AdminDashboard onLogout={handleLogout} globalTasksList={globalTasksList} setGlobalTasksList={setGlobalTasksList} userManagementRows={userManagementRows} setUserManagementRows={setUserManagementRows} withdrawalsList={withdrawalsList} setWithdrawalsList={setWithdrawalsList}/>
-      :<UserDashboard plan={roleContext} onLogout={handleLogout} globalTasksList={globalTasksList} setGlobalTasksList={setGlobalTasksList} userBalance={userBalance} setUserBalance={setUserBalance} globalUserTasksState={globalUserTasksState} setGlobalUserTasksState={setGlobalUserTasksState} currentUser={currentUser}/>
+      ?<AdminDashboard onLogout={handleLogout} userManagementRows={userManagementRows} setUserManagementRows={setUserManagementRows}/>
+      :<UserDashboard plan={roleContext} onLogout={handleLogout} userBalance={userBalance} setUserBalance={setUserBalance} globalUserTasksState={globalUserTasksState} setGlobalUserTasksState={setGlobalUserTasksState} currentUser={currentUser}/>
     )}
   </div>);
 }
