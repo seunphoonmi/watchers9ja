@@ -581,60 +581,102 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
   const [wdLoading, setWdLoading] = useState(false);
 
   useEffect(() => {
-    if (!currentUser?.email) return;
+  if (!currentUser?.email) return;
 
-    const fetchUserWD = async () => {
-      const { data: { session } } = await db.auth.getSession();
-      if (!session) return;
-
-      setWdLoading(true);
-      try {
-        const { data, error } = await db
-          .from('withdrawals')
-          .select('*')
-          .eq('email', currentUser.email)
-          .order('id', { ascending: false });
-        if (!error && data) {
-          setUserWD(data.map(w => ({
-            id: w.id,
-            amount: w.amount,
-            bank: w.bank || '',
-            account: w.account_number || w.account || '',
-            accountName: w.account_name || '',
-            status: w.status,
-            date: w.request_date || w.date || '—',
-          })));
-        }
-      } catch(e) {}
-      finally { setWdLoading(false); }
-    };
-
-    fetchUserWD();
-
-    const { data: { subscription: authSub } } = db.auth.onAuthStateChange((event, session) => {
-      if (session && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-        fetchUserWD();
+  // Separate fetch functions:
+  // - initialFetch: guards with session check (safe for first load)
+  // - realtimeFetch: no session gate (must fire instantly on realtime events)
+  const initialFetch = async () => {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) return;
+    setWdLoading(true);
+    try {
+      const { data, error } = await db
+        .from('withdrawals')
+        .select('*')
+        .eq('email', currentUser.email)
+        .order('id', { ascending: false });
+      if (!error && data) {
+        setUserWD(data.map(w => ({
+          id: w.id,
+          amount: w.amount,
+          bank: w.bank || '',
+          account: w.account_number || w.account || '',
+          accountName: w.account_name || '',
+          status: w.status,
+          date: w.request_date || w.date || '—',
+        })));
       }
-    });
+    } catch(e) {}
+    finally { setWdLoading(false); }
+  };
 
-    const ch = db.channel(`user-wd-${currentUser.email}`)
-  .on(
-    'postgres_changes',
-    {
-      event: 'UPDATE',           // only care about status updates
-      schema: 'public',
-      table: 'withdrawals',
-      filter: `email=eq.${currentUser.email}`  // ← this is the key fix
-    },
-    () => fetchUserWD()
-  )
-  .subscribe();
+  const realtimeFetch = async () => {
+    try {
+      const { data, error } = await db
+        .from('withdrawals')
+        .select('*')
+        .eq('email', currentUser.email)
+        .order('id', { ascending: false });
+      if (!error && data) {
+        setUserWD(data.map(w => ({
+          id: w.id,
+          amount: w.amount,
+          bank: w.bank || '',
+          account: w.account_number || w.account || '',
+          accountName: w.account_name || '',
+          status: w.status,
+          date: w.request_date || w.date || '—',
+        })));
+      }
+    } catch(e) {}
+  };
 
-    return () => {
-      authSub.unsubscribe();
-      db.removeChannel(ch);
-    };
-  }, [currentUser?.email]);
+  initialFetch();
+
+  const { data: { subscription: authSub } } = db.auth.onAuthStateChange((event, session) => {
+    if (session && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+      initialFetch();
+    }
+  });
+
+  const ch = db.channel(`user-wd-${currentUser.email}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'withdrawals',
+        filter: `email=eq.${currentUser.email}`
+      },
+      (payload) => {
+        // Directly update the specific row from the payload first (instant UI update)
+        // then do a full re-fetch to ensure consistency
+        if (payload.new) {
+          setUserWD(prev => prev.map(w =>
+            w.id === payload.new.id
+              ? {
+                  ...w,
+                  status: payload.new.status,
+                  amount: payload.new.amount,
+                  bank: payload.new.bank || w.bank,
+                  account: payload.new.account_number || w.account,
+                  accountName: payload.new.account_name || w.accountName,
+                  date: payload.new.request_date || w.date,
+                }
+              : w
+          ));
+        }
+        realtimeFetch(); // follow up with full re-fetch for consistency
+      }
+    )
+    .subscribe();
+
+  return () => {
+    authSub.unsubscribe();
+    db.removeChannel(ch);
+  };
+}, [currentUser?.email]);
 
   const isPrem=plan==='premium';
   const myTasks=tasksList.filter(t=>t.plan==='both'||t.plan===plan);
@@ -970,16 +1012,31 @@ function AdminDashboard({onLogout,userManagementRows,setUserManagementRows}){
     exportPDF(['S/N','Date','Name','Email','Plan','Bank','Account','Amount (₦)','Status'],withdrawalsList.slice().reverse().map((w,i)=>[i+1,w.date,w.user,w.email,w.plan,w.bank,w.account,`₦${Number(w.amount).toLocaleString()}`,w.status]),'9jaWatchers_Withdrawals','9jaWatchers — Withdrawal Requests Report');
   };
 
-  const approve = id => {
-    setWithdrawalsList(p => p.map(w => w.id === id ? { ...w, status: 'approved' } : w));
-    adminDb.from('withdrawals').update({ status: 'approved' }).eq('id', id);
-    toast.success('Approved', 'Payout approved.');
-  };
-  const reject = id => {
-    setWithdrawalsList(p => p.map(w => w.id === id ? { ...w, status: 'rejected' } : w));
-    adminDb.from('withdrawals').update({ status: 'rejected' }).eq('id', id);
-    toast.warning('Rejected', 'Request declined.');
-  };
+  const approve = async (id) => {
+  const { error } = await adminDb
+    .from('withdrawals')
+    .update({ status: 'approved' })
+    .eq('id', id);
+  if (error) {
+    toast.error('Update Failed', error.message);
+    return;
+  }
+  setWithdrawalsList(p => p.map(w => w.id === id ? { ...w, status: 'approved' } : w));
+  toast.success('Approved', 'Payout approved.');
+};
+
+const reject = async (id) => {
+  const { error } = await adminDb
+    .from('withdrawals')
+    .update({ status: 'rejected' })
+    .eq('id', id);
+  if (error) {
+    toast.error('Update Failed', error.message);
+    return;
+  }
+  setWithdrawalsList(p => p.map(w => w.id === id ? { ...w, status: 'rejected' } : w));
+  toast.warning('Rejected', 'Request declined.');
+};
   const removeTask = id => {
     setGlobalTasksList(p => { const u = p.filter(t => t.id !== id); store.set(SK.TASKS, u); return u; });
     adminDb.from('tasks').delete().eq('id', id);
