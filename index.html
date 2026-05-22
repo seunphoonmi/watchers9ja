@@ -637,7 +637,7 @@ function UserDashboard({plan,onLogout,globalTasksList,setGlobalTasksList,userBal
   },[page,currentUser?.id]);
 
   const refCode=`9JW-${isPrem?'PREM':'BASC'}-${currentUser?.id?.toString().slice(-4)||'2026'}`;
-  const refLink=`https://9jawatchers.com/?ref=${refCode}`;
+  const refLink=`https://naijawatchers.com/?ref=${refCode}`;
   const doneCount=myTasks.filter(t=>globalUserTasksState[t.id]||globalUserTasksState[String(t.id)]).length;
   const earnedToday=myTasks.filter(t=>globalUserTasksState[t.id]||globalUserTasksState[String(t.id)]).reduce((s,t)=>s+t.reward,0);
 
