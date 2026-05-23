@@ -114,7 +114,7 @@
     @keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.4;transform:scale(1.4);}}
     .loader-ring{width:20px;height:20px;border:3px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;flex-shrink:0;}
     .loader-wrap{display:flex;align-items:center;gap:10px;padding:40px;justify-content:center;color:var(--text-3);font-size:14px;}
-
+ 
     /* ═══════════════════════════════════════════════════════════════════════
        SWEET EFFECTS LAYER
        ═══════════════════════════════════════════════════════════════════════ */
@@ -166,7 +166,7 @@
       pointer-events:none;animation:bgBreath 6s ease-in-out infinite;
     }
     @keyframes bgBreath{0%,100%{opacity:0.6;}50%{opacity:1;}}
-
+ 
     /* Referral credit flash animation */
     @keyframes refCreditFlash{
       0%{box-shadow:0 0 0 0 rgba(22,163,74,0.6);}
@@ -181,19 +181,19 @@
 <div id="root"></div>
 <script type="text/babel">
 const { useState, useEffect, useRef, useCallback } = React;
-
+ 
 const SUPABASE_URL = "https://wvvggkqsohzmbypdjexc.supabase.co";
 const ANON_KEY     = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2dmdna3Fzb2h6bWJ5cGRqZXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxODI5NDYsImV4cCI6MjA5NDc1ODk0Nn0.AJtvvZMA9tFSBXlwXLmZ3oEP5skFAl92sbv4Br2McKA";
 const SERVICE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2dmdna3Fzb2h6bWJ5cGRqZXhjIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTE4Mjk0NiwiZXhwIjoyMDk0NzU4OTQ2fQ.58IcCa0bFz0YKhS8ocCCbUC71U51-sIcw8t9XMbD5-8";
-
+ 
 const { createClient } = window.supabase;
 const db      = createClient(SUPABASE_URL, ANON_KEY);
 const adminDb = createClient(SUPABASE_URL, SERVICE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false }
 });
-
+ 
 const ADMIN_EMAIL = "admin@naijawatchers.com";
-
+ 
 let _tc = 0; const _tl = new Set();
 const toast = {
   _emit(d){ const id=++_tc,item={id,...d}; _tl.forEach(fn=>fn(p=>[...p,item])); setTimeout(()=>{ const el=document.getElementById(`toast-${id}`); if(el)el.classList.add('exiting'); setTimeout(()=>_tl.forEach(fn=>fn(p=>p.filter(t=>t.id!==id))),260); },d.duration||4500); return id; },
@@ -215,7 +215,7 @@ function ToastContainer(){
     </div>
   )),document.getElementById('toast-root'));
 }
-
+ 
 function ConfirmModal({open,title,message,confirmLabel='Confirm',onConfirm,onCancel,variant='primary'}){
   if(!open)return null;
   return(
@@ -231,7 +231,7 @@ function ConfirmModal({open,title,message,confirmLabel='Confirm',onConfirm,onCan
     </div>
   );
 }
-
+ 
 const naira=n=>`₦${Number(n||0).toLocaleString()}`;
 const TASK_ICON={video:'▶',follow:'👤',like:'❤️',comment:'💬'};
 const TASK_CLR={
@@ -248,7 +248,7 @@ const store={
   get:(k,fb=null)=>{ try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch{return fb;} },
   set:(k,v)=>{ try{localStorage.setItem(k,JSON.stringify(v));}catch{} }
 };
-
+ 
 const mapWD = w => ({
   id: w.id,
   user: w.user_name || w.user || 'Unknown',
@@ -261,7 +261,7 @@ const mapWD = w => ({
   status: w.status,
   date: w.request_date || w.date || '—',
 });
-
+ 
 const exportXLS=(data,fname,sheet='Sheet1')=>{
   if(!window.XLSX){toast.error('Export Error','XLSX library not loaded.');return;}
   const wb=window.XLSX.utils.book_new(),ws=window.XLSX.utils.json_to_sheet(data);
@@ -280,7 +280,7 @@ const exportPDF=(headers,rows,fname,title)=>{
   doc.save(`${fname}_${new Date().toISOString().slice(0,10)}.pdf`);
   toast.success('Exported!',`${fname} saved as PDF.`);
 };
-
+ 
 function Logo({size='md'}){
   const sm=size==='sm';
   return(<div style={{display:'flex',alignItems:'center',gap:sm?8:10}}><div className="logo-mark" style={{width:sm?30:36,height:sm?30:36,fontSize:sm?15:18}}>9</div><span className="logo-text" style={{fontSize:sm?16:20}}>9ja<span>Watchers</span></span></div>);
@@ -364,7 +364,7 @@ function Sidebar({items,active,setPage,plan,onLogout,onUpgrade,pendingCount,curr
     {open&&(<div className="mobile-nav-drawer"><div className="mobile-nav-backdrop" onClick={()=>setOpen(false)}/><div className="mobile-nav-panel"><SidebarContent items={items} active={active} setPage={p=>{setPage(p);setOpen(false);}} plan={plan} onLogout={onLogout} onUpgrade={onUpgrade} pendingCount={pendingCount} currentUser={currentUser}/></div></div>)}
   </>);
 }
-
+ 
 function LandingPage({setScreen,setPlanSelection}){
   return(
     <div className="fade-in">
@@ -421,7 +421,7 @@ function LandingPage({setScreen,setPlanSelection}){
     </div>
   );
 }
-
+ 
 // ─── FIX 1: Robust referral crediting helper ────────────────────────────────
 // Finds referrer by matching UUID suffix and atomically credits their balance.
 // Returns the credited commission amount or 0 if no referrer found.
@@ -432,29 +432,29 @@ async function creditReferrer(refCode, newUserPlan) {
     const parts = refCode.trim().split('-');
     const snip = parts[parts.length - 1].toLowerCase();
     if (!snip || snip.length < 4) return 0;
-
+ 
     // Query only profiles whose UUID ends with the snippet (case-insensitive)
     // Using ilike for UUID suffix matching — much faster than fetching all rows
     const { data: candidates, error } = await adminDb
       .from('profiles')
       .select('id, balance, plan, total_referrals, referral_earnings')
       .ilike('id', `%${snip}`);
-
+ 
     if (error || !candidates || candidates.length === 0) {
       console.warn('[Referral] No referrer found for snip:', snip, error);
       return 0;
     }
-
+ 
     // Pick the best match (exact suffix)
     const referrer = candidates.find(p =>
       p.id && p.id.toString().toLowerCase().endsWith(snip)
     ) || candidates[0];
-
+ 
     const commission = referrer.plan === 'premium' ? 1000 : 500;
     const newBalance  = (referrer.balance || 0) + commission;
     const newRefs     = (referrer.total_referrals || 0) + 1;
     const newEarnings = (referrer.referral_earnings || 0) + commission;
-
+ 
     // Atomic update — triggers realtime UPDATE event on the referrer's profile row
     const { error: updateErr } = await adminDb
       .from('profiles')
@@ -464,12 +464,12 @@ async function creditReferrer(refCode, newUserPlan) {
         referral_earnings: newEarnings,
       })
       .eq('id', referrer.id);
-
+ 
     if (updateErr) {
       console.error('[Referral] Credit update failed:', updateErr);
       return 0;
     }
-
+ 
     console.log(`[Referral] ✅ Credited ₦${commission} to referrer ${referrer.id}`);
     return commission;
   } catch (err) {
@@ -477,7 +477,7 @@ async function creditReferrer(refCode, newUserPlan) {
     return 0;
   }
 }
-
+ 
 function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterNewUser}){
   const isLogin=mode==='login';
   const [step,setStep]=useState(1);
@@ -486,7 +486,7 @@ function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterN
   const [busy,setBusy]=useState(false);
   useEffect(()=>{if(initialSelectedPlan)setSelPlan(initialSelectedPlan);},[initialSelectedPlan]);
   const sf=(k,v)=>setForm(p=>({...p,[k]:v}));
-
+ 
   const handleSubmit=async(e)=>{
     e.preventDefault(); setBusy(true);
     const email=form.email.toLowerCase().trim();
@@ -508,7 +508,7 @@ function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterN
     }catch(err){toast.error('Authentication Failed',err.message||'Check your credentials.');}
     finally{setBusy(false);}
   };
-
+ 
   const handlePaystack=()=>{
     const email=form.email.toLowerCase().trim();
     if(!email||!form.name.trim()){toast.error('Missing Info','Fill in name and email.');setStep(1);return;}
@@ -516,7 +516,7 @@ function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterN
     const amt=(selPlan==='premium'?8000:4000)*100;
     // Capture ref code before opening payment modal (localStorage can be cleared)
     const capturedRefCode = localStorage.getItem('9ja_active_ref_code') || null;
-
+ 
     try{
       const pp=new window.PaystackPop();
       pp.newTransaction({
@@ -530,7 +530,7 @@ function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterN
             // 1. Create auth user
             const {data:authData,error:authErr}=await db.auth.signUp({email:form.email.toLowerCase().trim(),password:form.password});
             if(authErr)throw authErr;
-
+ 
             const bal=selPlan==='premium'?1000:500;
             const profile={
               id:authData.user.id,
@@ -546,11 +546,11 @@ function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterN
               // FIX: store the ref code that recruited this user for audit trail
               referred_by: capturedRefCode || null,
             };
-
+ 
             // 2. Insert new user profile
             const {error:pErr}=await db.from('profiles').insert([profile]);
             if(pErr)throw pErr;
-
+ 
             // 3. FIX: Credit referrer using robust helper — runs AFTER new profile insert
             if(capturedRefCode){
               const credited = await creditReferrer(capturedRefCode, selPlan);
@@ -560,7 +560,7 @@ function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterN
                 toast.success('Referral Bonus Sent! 🎉',`Your referrer just received ${naira(credited)}!`);
               }
             }
-
+ 
             // 4. Cache profile locally and notify parent
             store.set(SK.UP(form.email),profile);
             if(onRegisterNewUser)onRegisterNewUser({
@@ -578,7 +578,7 @@ function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterN
       });
     }catch(err){toast.error('Gateway Error','Unable to connect to Paystack.');}
   };
-
+ 
   return(
     <div style={{minHeight:'100vh',background:'var(--bg)',display:'flex',flexDirection:'column'}}>
       <div style={{padding:'16px 24px',borderBottom:'1px solid var(--border)',background:'var(--surface)'}}>
@@ -629,7 +629,7 @@ function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterN
     </div>
   );
 }
-
+ 
 function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasksState,setGlobalUserTasksState,currentUser}){
   const [page,setPage]=useState('dashboard');
   const [wdSuccess,setWdSuccess]=useState(false);
@@ -639,11 +639,11 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
   const [liveEarn,setLiveEarn]=useState(currentUser?.referral_earnings||0);
   // FIX 2: Track flash animation for when referral bonus arrives
   const [refFlash,setRefFlash]=useState(false);
-
+ 
   const [tasksList, setTasksList] = useState(() => store.get(SK.TASKS) || []);
   const tasksListRef = useRef(tasksList);
   useEffect(() => { tasksListRef.current = tasksList; }, [tasksList]);
-
+ 
   useEffect(() => {
     const fetchTasks = async () => {
       try {
@@ -660,16 +660,16 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
       .subscribe((status) => { if (status === 'SUBSCRIBED') { fetchTasks(); } });
     return () => { db.removeChannel(ch); };
   }, []);
-
+ 
   const [userWD, setUserWD] = useState([]);
   const [wdLoading, setWdLoading] = useState(false);
-
+ 
   // ─── FIX 2: Realtime subscription to OWN profile row ──────────────────────
   // This is what makes referral bonuses (and any balance changes) appear
   // instantly on the referrer's dashboard without them needing to refresh.
   useEffect(() => {
     if (!currentUser?.id) return;
-
+ 
     const fetchProfile = async () => {
       try {
         const { data } = await db.from('profiles')
@@ -683,7 +683,7 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
         }
       } catch(e) {}
     };
-
+ 
     // Subscribe to any UPDATE on this user's profile row
     const ch = db.channel(`profile-live-${currentUser.id}`)
       .on(
@@ -700,11 +700,11 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
           const newBal  = payload.new.balance;
           const newRefs = payload.new.total_referrals || 0;
           const newEarn = payload.new.referral_earnings || 0;
-
+ 
           setUserBalance(newBal);
           setLiveRefs(newRefs);
           setLiveEarn(newEarn);
-
+ 
           // FIX 2b: Show flash + toast when a referral bonus arrives
           if (newRefs > (prev.refs) || newEarn > (prev.earn)) {
             const bonus = newEarn - prev.earn;
@@ -723,11 +723,11 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
         // Do an initial fetch when channel connects to ensure we're in sync
         if (status === 'SUBSCRIBED') fetchProfile();
       });
-
+ 
     return () => { db.removeChannel(ch); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id]);
-
+ 
   useEffect(() => {
     if (!currentUser?.email) return;
     const initialFetch = async () => {
@@ -764,25 +764,25 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
       }).subscribe();
     return () => { authSub.unsubscribe(); db.removeChannel(ch); };
   }, [currentUser?.email]);
-
+ 
   const isPrem=plan==='premium';
   const myTasks=tasksList.filter(t=>t.plan==='both'||t.plan===plan);
   const [histLog,setHistLog]=useState(()=>{
     const s=store.get(SK.UP(currentUser?.email||''));
     return s?.historyLog||[{label:'Welcome Bonus — Account Activated',amount:isPrem?1000:500,type:'credit',timestamp:'Account Created'}];
   });
-
+ 
   const refCode=`9JW-${isPrem?'PREM':'BASC'}-${currentUser?.id?.toString().slice(-4)||'2026'}`;
   const refLink=`https://naijawatchers.site/?ref=${refCode}`;
   const doneCount=myTasks.filter(t=>globalUserTasksState[t.id]||globalUserTasksState[String(t.id)]).length;
   const earnedToday=myTasks.filter(t=>globalUserTasksState[t.id]||globalUserTasksState[String(t.id)]).reduce((s,t)=>s+t.reward,0);
-
+ 
   useEffect(()=>{
     if(!currentUser?.email)return;
     const s=store.get(SK.UP(currentUser.email))||{};
     store.set(SK.UP(currentUser.email),{...s,balance:userBalance,tasksState:globalUserTasksState,historyLog:histLog,total_referrals:liveRefs,referral_earnings:liveEarn});
   },[userBalance,globalUserTasksState,histLog,liveRefs,liveEarn]);
-
+ 
   const handleTaskDone=async(taskId,reward)=>{
     const newBal=userBalance+reward,newState={...globalUserTasksState,[String(taskId)]:true};
     setGlobalUserTasksState(newState);setUserBalance(newBal);
@@ -794,7 +794,7 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
     const s=store.get(SK.UP(currentUser?.email||''))||{};
     store.set(SK.UP(currentUser?.email||''),{...s,balance:newBal,tasksState:newState});
   };
-
+ 
   const submitWD=async(e)=>{
     e.preventDefault();
     const amt=Number(wdForm.amount);
@@ -812,10 +812,10 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
     setWdSuccess(true);
     toast.success('Withdrawal Requested',`${naira(amt)} pending admin approval.`);
   };
-
+ 
   const statusStyle=s=>s==='approved'?{background:'var(--green-light)',color:'var(--green)',border:'1px solid #86efac'}:s==='rejected'?{background:'var(--red-light)',color:'var(--red)',border:'1px solid #fca5a5'}:{background:'var(--gold-light)',color:'var(--gold)',border:'1px solid #fcd34d'};
   const statusIcon=s=>s==='approved'?'✓':s==='rejected'?'✕':'⏳';
-
+ 
   const navItems=[
     {id:'dashboard',icon:'🏠',label:'Dashboard'},
     {id:'withdraw',icon:'💳',label:'Withdraw Funds'},
@@ -823,7 +823,7 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
     {id:'referrals',icon:'👥',label:'Referrals'},
     {id:'history',icon:'📜',label:'Transaction History'},
   ];
-
+ 
   return(
     <div className="app-shell">
       <Sidebar items={navItems} active={page} setPage={setPage} plan={plan} onLogout={onLogout} onUpgrade={()=>setShowUpgrade(true)} currentUser={currentUser} balance={userBalance}/>
@@ -846,7 +846,7 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
       )}
       <div className="main-scroll">
         <div className="main-content" style={{padding:'32px 36px',maxWidth:900,margin:'0 auto'}}>
-
+ 
           {page==='dashboard'&&(<div className="fade-in">
             <div style={{marginBottom:28}}><h1 style={{fontSize:26,fontWeight:900,marginBottom:4,fontFamily:"'Sora',sans-serif"}}>Hey, {currentUser?.name?.split(' ')[0]||'Earner'} 👋</h1><p style={{color:'var(--text-3)',fontSize:14}}>Here's your earning overview for today.</p></div>
             <div className="stats-row" style={{display:'flex',gap:16,marginBottom:28,flexWrap:'wrap'}}>
@@ -870,7 +870,7 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
               {myTasks.length===0?<div className="card" style={{textAlign:'center',padding:40,color:'var(--text-3)'}}>No tasks available. Check back soon!</div>:myTasks.map(task=><TaskCard key={task.id} task={task} onComplete={handleTaskDone} globalUserTasksState={globalUserTasksState}/>)}
             </div>
           </div>)}
-
+ 
           {page==='withdraw'&&(<div className="fade-in">
             <div style={{marginBottom:28}}><h1 style={{fontSize:24,fontWeight:900,marginBottom:4,fontFamily:"'Sora',sans-serif"}}>Withdraw Funds</h1><p style={{color:'var(--text-3)',fontSize:14}}>Request a withdrawal to your Nigerian bank account.</p></div>
             {wdSuccess?(
@@ -905,7 +905,7 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
               </div>
             )}
           </div>)}
-
+ 
           {page==='wd-history'&&(<div className="fade-in">
             <div style={{marginBottom:28,display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:12}}>
               <div>
@@ -952,7 +952,7 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
               </div>
             )}
           </div>)}
-
+ 
           {page==='referrals'&&(<div className="fade-in">
             <div style={{marginBottom:28}}><h1 style={{fontSize:24,fontWeight:900,marginBottom:4,fontFamily:"'Sora',sans-serif"}}>Referral Earnings</h1><p style={{color:'var(--text-3)',fontSize:14}}>Share your link — earn {isPrem?'₦1,000':'₦500'} for every person who registers.</p></div>
             <div className="card" style={{marginBottom:20}}>
@@ -976,7 +976,7 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
               ))}
             </div>
           </div>)}
-
+ 
           {page==='history'&&(<div className="fade-in">
             <div style={{marginBottom:28}}><h1 style={{fontSize:24,fontWeight:900,marginBottom:4,fontFamily:"'Sora',sans-serif"}}>Transaction History</h1><p style={{color:'var(--text-3)',fontSize:14}}>All credits and debits on your account.</p></div>
             <div style={{display:'flex',flexDirection:'column',gap:10}}>
@@ -996,16 +996,16 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
     </div>
   );
 }
-
+ 
 function AdminDashboard({onLogout,userManagementRows,setUserManagementRows}){
   const [page,setPage]=useState('overview');
   const [taskForm,setTaskForm]=useState({type:'video',title:'',url:'',reward:'',plan:'both'});
   const [taskSaved,setTaskSaved]=useState(false);
   const [confirm,setConfirm]=useState({open:false});
-
+ 
   const [globalTasksList, setGlobalTasksList] = useState(() => store.get(SK.TASKS) || []);
   const [withdrawalsList, setWithdrawalsList] = useState([]);
-
+ 
   useEffect(() => {
     const fetchTasks = async () => {
       try {
@@ -1019,7 +1019,7 @@ function AdminDashboard({onLogout,userManagementRows,setUserManagementRows}){
       .subscribe();
     return () => adminDb.removeChannel(ch);
   }, []);
-
+ 
   useEffect(() => {
     const fetchWD = async () => {
       try {
@@ -1033,7 +1033,7 @@ function AdminDashboard({onLogout,userManagementRows,setUserManagementRows}){
       .subscribe((status) => { if (status === 'SUBSCRIBED') fetchWD(); });
     return () => adminDb.removeChannel(ch);
   }, []);
-
+ 
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -1054,10 +1054,10 @@ function AdminDashboard({onLogout,userManagementRows,setUserManagementRows}){
       .subscribe();
     return () => adminDb.removeChannel(ch);
   }, []);
-
+ 
   const pending = withdrawalsList.filter(w => w.status === 'pending');
   const totalPaid = withdrawalsList.filter(w => w.status === 'approved').reduce((s, w) => s + w.amount, 0);
-
+ 
   const exportUsersXLS=()=>{
     if(!userManagementRows.length){toast.warning('No Data','No users to export.');return;}
     exportXLS(userManagementRows.map((u,i)=>({'S/N':i+1,'Full Name':u.name,'Email':u.email,'Plan':u.plan.toUpperCase(),'Balance (NGN)':u.balance,'Referrals':u.refs,'Status':u.status,'Date Joined':u.joined})),'9jaWatchers_Users','Users');
@@ -1074,7 +1074,7 @@ function AdminDashboard({onLogout,userManagementRows,setUserManagementRows}){
     if(!withdrawalsList.length){toast.warning('No Data','No withdrawals to export.');return;}
     exportPDF(['S/N','Date','Name','Email','Plan','Bank','Account','Amount (₦)','Status'],withdrawalsList.slice().reverse().map((w,i)=>[i+1,w.date,w.user,w.email,w.plan,w.bank,w.account,`₦${Number(w.amount).toLocaleString()}`,w.status]),'9jaWatchers_Withdrawals','9jaWatchers — Withdrawal Requests Report');
   };
-
+ 
   const approve = async (id) => {
     const { error } = await adminDb.from('withdrawals').update({ status: 'approved' }).eq('id', id);
     if (error) { toast.error('Update Failed', error.message); return; }
@@ -1109,21 +1109,21 @@ function AdminDashboard({onLogout,userManagementRows,setUserManagementRows}){
     setTaskSaved(true); setTimeout(() => setTaskSaved(false), 3000);
     toast.success('Task Published!', `"${t.title.substring(0, 40)}" is now live.`);
   };
-
+ 
   const adminNav=[
     {id:'overview',icon:'📊',label:'Overview'},
     {id:'tasks',icon:'📋',label:'Task Manager'},
     {id:'withdrawals',icon:'💳',label:'Withdrawals'},
     {id:'users',icon:'👥',label:'Users'},
   ];
-
+ 
   return(
     <div className="app-shell">
       <ConfirmModal {...confirm} onCancel={()=>setConfirm({open:false})}/>
       <Sidebar items={adminNav} active={page} setPage={setPage} plan="admin" onLogout={onLogout} pendingCount={pending.length} currentUser={{name:'Administrator'}} balance={0}/>
       <div className="main-scroll">
         <div className="main-content" style={{padding:'32px 36px',maxWidth:960,margin:'0 auto'}}>
-
+ 
           {page==='overview'&&(<div className="fade-in">
             <div style={{marginBottom:28}}><h1 style={{fontSize:26,fontWeight:900,marginBottom:4,fontFamily:"'Sora',sans-serif"}}>Admin Dashboard 🛠️</h1><p style={{color:'var(--text-3)',fontSize:14}}>Platform health and key metrics at a glance.</p></div>
             <div className="stats-row" style={{display:'flex',gap:16,marginBottom:28,flexWrap:'wrap'}}>
@@ -1160,7 +1160,7 @@ function AdminDashboard({onLogout,userManagementRows,setUserManagementRows}){
               </div>
             )}
           </div>)}
-
+ 
           {page==='tasks'&&(<div className="fade-in">
             <div style={{marginBottom:28}}><h1 style={{fontSize:24,fontWeight:900,marginBottom:4,fontFamily:"'Sora',sans-serif"}}>Task Manager</h1><p style={{color:'var(--text-3)',fontSize:14}}>Create and manage tasks shown to users.</p></div>
             <div className="admin-task-layout" style={{display:'flex',gap:28,alignItems:'flex-start',flexWrap:'wrap'}}>
@@ -1200,7 +1200,7 @@ function AdminDashboard({onLogout,userManagementRows,setUserManagementRows}){
               </div>
             </div>
           </div>)}
-
+ 
           {page==='withdrawals'&&(<div className="fade-in">
             <div style={{marginBottom:28,display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:12}}>
               <div>
@@ -1228,7 +1228,7 @@ function AdminDashboard({onLogout,userManagementRows,setUserManagementRows}){
               ))}
             </div>
           </div>)}
-
+ 
           {page==='users'&&(<div className="fade-in">
             <div style={{marginBottom:28,display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:12}}>
               <div>
@@ -1253,13 +1253,13 @@ function AdminDashboard({onLogout,userManagementRows,setUserManagementRows}){
               ))}
             </div>
           </div>)}
-
+ 
         </div>
       </div>
     </div>
   );
 }
-
+ 
 function App(){
   const [screen,setScreen]=useState('landing');
   const [planOverride,setPlanOverride]=useState(null);
@@ -1268,7 +1268,7 @@ function App(){
   const [userManagementRows,setUserManagementRows]=useState([]);
   const [userBalance,setUserBalance]=useState(500);
   const [globalUserTasksState,setGlobalUserTasksState]=useState({});
-
+ 
   useEffect(()=>{
     const init=async()=>{
       const ref=new URLSearchParams(window.location.search).get('ref');
@@ -1309,7 +1309,7 @@ function App(){
     });
     return () => subscription.unsubscribe();
   },[]);
-
+ 
   useEffect(()=>{
     const onFocus=async()=>{
       const session=store.get(SK.SESSION);
@@ -1326,7 +1326,7 @@ function App(){
     window.addEventListener('focus',onFocus);
     return()=>window.removeEventListener('focus',onFocus);
   },[]);
-
+ 
   const handleLogin=async(role,profile)=>{
     setRoleContext(role);setCurrentUser(profile);
     if(role!=='admin'){
@@ -1347,15 +1347,15 @@ function App(){
     store.set(SK.SESSION,{role,user:profile});
     setScreen('portal');
   };
-
+ 
   const handleLogout=async()=>{
     await db.auth.signOut();
     store.set(SK.SESSION,null);
     setScreen('landing');setRoleContext(null);setCurrentUser(null);
   };
-
+ 
   const handleNewUser=user=>setUserManagementRows(p=>[user,...p]);
-
+ 
   return(<div>
     <ToastContainer/>
     {screen==='landing'&&<LandingPage setScreen={setScreen} setPlanSelection={setPlanOverride}/>}
@@ -1367,19 +1367,19 @@ function App(){
     )}
   </div>);
 }
-
+ 
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
-
+ 
 <!-- ═══ Sweet Effects Engine ════════════════════════════════════════════════ -->
 <script>
 (function(){
   var PHRASES=["For Every Click You Make","Watching Nigerian Brands","With Just Your Smartphone","Paid Daily To Your Bank","By Engaging Top Brands"];
   var pi=0,ci=0,deleting=false,lastTs=0,pauseActive=false,pauseTimer=null;
   var TY=65,TD=38,PAUSE=2350;
-
+ 
   function getEl(){return document.getElementById('tw-target');}
-
+ 
   function tick(){
     var e=getEl();if(!e)return;
     var ph=PHRASES[pi];
@@ -1391,12 +1391,12 @@ ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
       if(ci<=0){deleting=false;pi=(pi+1)%PHRASES.length;ci=0;}
     }
   }
-
+ 
   function loop(ts){
     if(!pauseActive){var sp=deleting?TD:TY;if(ts-lastTs>sp){tick();lastTs=ts;}}
     requestAnimationFrame(loop);
   }
-
+ 
   function addSparkles(hero){
     var d=document.createElement('div');d.className='hero-sparks';
     var cols=['rgba(22,163,74,0.5)','rgba(22,163,74,0.28)','rgba(245,158,11,0.45)','rgba(245,158,11,0.22)','rgba(124,58,237,0.32)','rgba(16,185,129,0.38)'];
@@ -1409,7 +1409,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
     }
     hero.insertBefore(d,hero.firstChild);
   }
-
+ 
   function wrapLogos(){
     document.querySelectorAll('.logo-mark').forEach(function(lm){
       if(lm.parentElement&&lm.parentElement.classList.contains('logo-mark-wrap'))return;
@@ -1418,27 +1418,27 @@ ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
       var r=document.createElement('div');r.className='logo-pulse-ring';w.appendChild(r);
     });
   }
-
+ 
   function scrollReveal(){
     var ro=new IntersectionObserver(function(entries){
       entries.forEach(function(e,idx){if(e.isIntersecting){setTimeout(function(){e.target.classList.add('vis');},idx*72);ro.unobserve(e.target);}});
     },{threshold:0.1});
     document.querySelectorAll('.plan-card,.stat-card').forEach(function(el){el.classList.add('reveal-up');ro.observe(el);});
   }
-
+ 
   function statFloat(){
     var c=document.querySelector('.hero-content');if(!c)return;
     var r=c.querySelector('div[style*="gap:32"]');if(!r)return;
     r.querySelectorAll(':scope > div').forEach(function(el){el.classList.add('hero-stat-float');});
   }
-
+ 
   function taskAnim(){
     var seen=new WeakSet();
     function run(){document.querySelectorAll('.task-card:not(.tc-anim)').forEach(function(el,i){if(seen.has(el))return;seen.add(el);el.classList.add('tc-anim');el.style.animationDelay=(i*0.056).toFixed(3)+'s';});}
     run();
     new MutationObserver(run).observe(document.body,{childList:true,subtree:true});
   }
-
+ 
   function init(){
     if(!getEl()){setTimeout(init,120);return;}
     wrapLogos();
@@ -1448,7 +1448,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
     var hs=document.querySelector('.hero-section');if(hs)addSparkles(hs);
     requestAnimationFrame(loop);
   }
-
+ 
   if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',init);}
   else{setTimeout(init,80);}
 })();
