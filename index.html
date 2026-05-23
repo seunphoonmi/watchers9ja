@@ -523,20 +523,25 @@ function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterN
           setBusy(true);
           try{
             // 1. Create auth user
-            const {data:authData,error:authErr}=await db.auth.signUp({email:form.email.toLowerCase().trim(),password:form.password});
-            if(authErr)throw authErr;
- 
-            // ── BUG FIX 1: Sign user in immediately after signup ──────────────
-            // db.auth.signUp() creates the user but does NOT establish a session
-            // when Supabase email confirmation is enabled (the default). Without
-            // an active session, RLS blocks all Realtime subscriptions and DB
-            // reads, so the dashboard silently breaks. Calling signInWithPassword
-            // immediately guarantees a valid JWT regardless of confirmation state.
-            const { error: signInErr } = await db.auth.signInWithPassword({
-              email: form.email.toLowerCase().trim(),
-              password: form.password,
-            });
-            if (signInErr) console.warn('[Auth] Auto sign-in after signup failed:', signInErr.message);
+            // 1. Create user via Admin API — zero emails sent, zero rate limits
+// signUp() sends a confirmation email every time (Supabase caps at 2-4/hr).
+// admin.createUser() + email_confirm:true creates the user instantly,
+// confirms them automatically, and never touches the email system.
+const {data:authData,error:authErr}=await adminDb.auth.admin.createUser({
+  email: form.email.toLowerCase().trim(),
+  password: form.password,
+  email_confirm: true,
+});
+if(authErr)throw authErr;
+
+// Sign them in immediately — admin createUser does NOT create a session,
+// so we must call signInWithPassword to get the JWT that unlocks
+// Realtime subscriptions, RLS-protected reads, and the dashboard.
+const {error:signInErr}=await db.auth.signInWithPassword({
+  email: form.email.toLowerCase().trim(),
+  password: form.password,
+});
+if(signInErr)throw signInErr;
             // ─────────────────────────────────────────────────────────────────
  
             const bal=selPlan==='premium'?1000:500;
