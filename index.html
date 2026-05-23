@@ -270,7 +270,7 @@ const INIT_TASKS=[
   {id:3,type:'video',title:'Watch Dangote Foundation Advert',url:'https://youtube.com',reward:200,plan:'both'},
   {id:4,type:'follow',title:'Follow @NigerianStartups on Instagram',url:'https://instagram.com',reward:100,plan:'both'},
   {id:5,type:'follow',title:'Follow @TechPointNG on Twitter',url:'https://twitter.com',reward:100,plan:'both'},
-  {id:6,type:'like',title:'Like Paystack New Feature Post',url:'https://twitter.com',reward:80,plan:'both'},
+  {id:6,type:'like',title:'Like  New Feature Post',url:'https://twitter.com',reward:80,plan:'both'},
   {id:7,type:'like',title:'Like Africa Fintech Festival Post',url:'https://instagram.com',reward:80,plan:'both'},
   {id:8,type:'comment',title:'Comment on MTN Data Offer Post',url:'https://facebook.com',reward:120,plan:'both'},
   {id:9,type:'video',title:'Watch Konga Flash Sale Ad',url:'https://youtube.com',reward:250,plan:'premium'},
@@ -441,7 +441,7 @@ function LandingPage({setScreen,setPlanSelection}){
             <div style={{fontSize:44,fontWeight:900,margin:'18px 0 4px',fontFamily:"'Sora',sans-serif"}}>₦4,000</div>
             <div style={{color:'var(--text-3)',fontSize:13,marginBottom:24}}>One-time activation fee</div>
             <div className="divider"/>
-            {['8 tasks per day','₦500 welcome bonus credit','₦500 per referral earned','Direct bank withdrawal','Paystack-secured payments'].map(f=>(<div key={f} style={{display:'flex',gap:10,marginBottom:12,fontSize:14,color:'var(--text-2)',alignItems:'center'}}><span style={{color:'var(--green)',fontWeight:800,fontSize:13,width:18,flexShrink:0}}>✓</span>{f}</div>))}
+            {['8 tasks per day','₦500 welcome bonus credit','₦500 per referral earned','Direct bank withdrawal','-secured payments'].map(f=>(<div key={f} style={{display:'flex',gap:10,marginBottom:12,fontSize:14,color:'var(--text-2)',alignItems:'center'}}><span style={{color:'var(--green)',fontWeight:800,fontSize:13,width:18,flexShrink:0}}>✓</span>{f}</div>))}
             <button className="btn btn-outline btn-full" style={{marginTop:24}} onClick={()=>{setPlanSelection('basic');setScreen('signup');}}>Get Started — Basic</button>
           </div>
           <div className="plan-card featured" style={{position:'relative'}}>
@@ -499,7 +499,7 @@ function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterN
     try{
       const pp=new window.PaystackPop();
       pp.newTransaction({
-        key:'pk_live_56cd68f5adb0e165c34545bee318900fcd3505e3',
+        key:'pk_test_59b624a7a9d7733af6f2e5407ec0c6ee2cea1428',
         email,amount:amt,currency:'NGN',
         metadata:{custom_fields:[{display_name:'Full Name',variable_name:'customer_name',value:form.name},{display_name:'Plan',variable_name:'plan',value:selPlan}]},
         onSuccess:async(tx)=>{
