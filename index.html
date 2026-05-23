@@ -760,36 +760,6 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
     setWdSuccess(true);
     toast.success('Withdrawal Requested',`${naira(amt)} pending admin approval.`);
   };
-  // ── Live profile balance watcher — updates dashboard when referral bonus arrives ──
-useEffect(() => {
-  if (!currentUser?.id) return;
-
-  const ch = db.channel(`profile-balance-${currentUser.id}`)
-    .on('postgres_changes', {
-      event: 'UPDATE',
-      schema: 'public',
-      table: 'profiles',
-      filter: `id=eq.${currentUser.id}`
-    }, (payload) => {
-      if (!payload.new) return;
-      console.log('[Profile RT] Balance update received:', payload.new);
-
-      if (payload.new.balance !== undefined) {
-        setUserBalance(payload.new.balance);
-      }
-      if (payload.new.total_referrals !== undefined) {
-        setLiveRefs(payload.new.total_referrals);
-      }
-      if (payload.new.referral_earnings !== undefined) {
-        setLiveEarn(payload.new.referral_earnings);
-      }
-    })
-    .subscribe((status) => {
-      console.log('[Profile RT] Channel status:', status);
-    });
-
-  return () => db.removeChannel(ch);
-}, [currentUser?.id]);
 
   const statusStyle=s=>s==='approved'?{background:'var(--green-light)',color:'var(--green)',border:'1px solid #86efac'}:s==='rejected'?{background:'var(--red-light)',color:'var(--red)',border:'1px solid #fca5a5'}:{background:'var(--gold-light)',color:'var(--gold)',border:'1px solid #fcd34d'};
   const statusIcon=s=>s==='approved'?'✓':s==='rejected'?'✕':'⏳';
