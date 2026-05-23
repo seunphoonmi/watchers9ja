@@ -1,11 +1,10 @@
-<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>9jaWatchers — Earn With Every Click</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://js.paystack.co/v2/inline.js"></script>
+  <script src="https://js.paystack.co/v2/inline.js" onerror="console.error('Paystack script failed to load')"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
@@ -114,81 +113,34 @@
     @keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.4;transform:scale(1.4);}}
     .loader-ring{width:20px;height:20px;border:3px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;flex-shrink:0;}
     .loader-wrap{display:flex;align-items:center;gap:10px;padding:40px;justify-content:center;color:var(--text-3);font-size:14px;}
-
-    /* ═══════════════════════════════════════════════════════════════════════
-       SWEET EFFECTS LAYER — visual polish injected on top, non-breaking
-       ═══════════════════════════════════════════════════════════════════════ */
-
-    /* Typewriter blinking cursor */
     .tw-cursor{display:inline-block;width:3px;height:0.8em;background:linear-gradient(180deg,var(--green),#f59e0b);margin-left:4px;vertical-align:middle;border-radius:2px;animation:twBlink 0.72s step-end infinite;}
     @keyframes twBlink{0%,100%{opacity:1;}50%{opacity:0;}}
-
-    /* Animated shimmer on the gradient headline */
-    .gradient-text{
-      background-size:260% auto !important;
-      background-image:linear-gradient(115deg,var(--green) 0%,#f59e0b 30%,#10b981 52%,#7c3aed 74%,var(--green) 100%) !important;
-      animation:shimmerText 5.5s linear infinite;
-      -webkit-background-clip:text !important;
-      background-clip:text !important;
-      -webkit-text-fill-color:transparent !important;
-    }
+    .gradient-text{background-size:260% auto !important;background-image:linear-gradient(115deg,var(--green) 0%,#f59e0b 30%,#10b981 52%,#7c3aed 74%,var(--green) 100%) !important;animation:shimmerText 5.5s linear infinite;-webkit-background-clip:text !important;background-clip:text !important;-webkit-text-fill-color:transparent !important;}
     @keyframes shimmerText{0%{background-position:0% center;}100%{background-position:260% center;}}
-
-    /* Logo mark soft pulse ring */
     .logo-mark-wrap{position:relative;display:inline-flex;align-items:center;}
     .logo-pulse-ring{position:absolute;inset:-5px;border-radius:15px;border:2.5px solid rgba(22,163,74,0.36);animation:logoPulse 2.7s ease-in-out infinite;pointer-events:none;}
     @keyframes logoPulse{0%,100%{opacity:0.55;transform:scale(1);}50%{opacity:0;transform:scale(1.25);}}
-
-    /* Hero floating sparkle particles */
     .hero-sparks{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:1;}
     .spark{position:absolute;border-radius:50%;opacity:0;animation:sparkFloat linear infinite;}
-    @keyframes sparkFloat{
-      0%{opacity:0;transform:translateY(0) scale(0.4) rotate(0deg);}
-      12%{opacity:1;}
-      80%{opacity:0.55;}
-      100%{opacity:0;transform:translateY(-175px) scale(1.45) rotate(200deg);}
-    }
-
-    /* Hero pill gentle bounce */
+    @keyframes sparkFloat{0%{opacity:0;transform:translateY(0) scale(0.4) rotate(0deg);}12%{opacity:1;}80%{opacity:0.55;}100%{opacity:0;transform:translateY(-175px) scale(1.45) rotate(200deg);}}
     .hero-pill-anim{animation:pillBounce 3.6s ease-in-out infinite;}
     @keyframes pillBounce{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);}}
-
-    /* Hero stat items floating stagger */
     .hero-stat-float{animation:hStatFloat 4.2s ease-in-out infinite;}
     .hero-stat-float:nth-child(2){animation-delay:1.4s;}
     .hero-stat-float:nth-child(3){animation-delay:2.8s;}
     @keyframes hStatFloat{0%,100%{transform:translateY(0);}50%{transform:translateY(-7px);}}
-
-    /* Nav CTA glow ring pulse */
     .nav-cta-glow{animation:ctaGlow 2.9s ease-out infinite;}
-    @keyframes ctaGlow{
-      0%,100%{box-shadow:0 4px 14px rgba(22,163,74,0.28),0 0 0 0 rgba(22,163,74,0.3);}
-      50%{box-shadow:0 4px 14px rgba(22,163,74,0.28),0 0 0 9px rgba(22,163,74,0);}
-    }
-
-    /* Plan card enhanced hover lift */
+    @keyframes ctaGlow{0%,100%{box-shadow:0 4px 14px rgba(22,163,74,0.28),0 0 0 0 rgba(22,163,74,0.3);}50%{box-shadow:0 4px 14px rgba(22,163,74,0.28),0 0 0 9px rgba(22,163,74,0);}}
     .plan-card{transition:transform 0.28s cubic-bezier(0.34,1.3,0.64,1),box-shadow 0.28s ease !important;}
     .plan-card:hover{transform:translateY(-8px) scale(1.013) !important;box-shadow:0 24px 56px rgba(22,163,74,0.13),0 4px 16px rgba(0,0,0,0.07) !important;}
     .plan-card.featured:hover{box-shadow:0 24px 56px rgba(124,58,237,0.17),0 4px 16px rgba(0,0,0,0.07) !important;}
-
-    /* Scroll reveal for plan/stat cards */
     .reveal-up{opacity:0;transform:translateY(28px);transition:opacity 0.52s ease,transform 0.52s cubic-bezier(0.34,1.1,0.64,1);}
     .reveal-up.vis{opacity:1;transform:none;}
-
-    /* Task card staggered entrance */
     .tc-anim{animation:tcSlide 0.38s cubic-bezier(0.34,1.2,0.64,1) both;}
     @keyframes tcSlide{from{opacity:0;transform:translateX(-12px) scale(0.98);}to{opacity:1;transform:none;}}
-
-    /* Stat card hover lift */
     .stat-card{transition:transform 0.2s ease,box-shadow 0.2s ease;}
     .stat-card:hover{transform:translateY(-3px);box-shadow:var(--shadow);}
-
-    /* Hero section background shimmer overlay */
-    .hero-bg::after{
-      content:'';position:absolute;inset:0;
-      background:radial-gradient(ellipse 55% 40% at 50% 52%,rgba(22,163,74,0.045) 0%,transparent 70%);
-      pointer-events:none;animation:bgBreath 6s ease-in-out infinite;
-    }
+    .hero-bg::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 55% 40% at 50% 52%,rgba(22,163,74,0.045) 0%,transparent 70%);pointer-events:none;animation:bgBreath 6s ease-in-out infinite;}
     @keyframes bgBreath{0%,100%{opacity:0.6;}50%{opacity:1;}}
   </style>
 </head>
@@ -204,10 +156,7 @@ const SERVICE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 const { createClient } = window.supabase;
 const db      = createClient(SUPABASE_URL, ANON_KEY);
-const adminDb = createClient(SUPABASE_URL, SERVICE_KEY, {
-  auth: { autoRefreshToken: false, persistSession: false }
-});
-
+const adminDb = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
 const ADMIN_EMAIL = "admin@naijawatchers.com";
 
 let _tc = 0; const _tl = new Set();
@@ -248,58 +197,25 @@ function ConfirmModal({open,title,message,confirmLabel='Confirm',onConfirm,onCan
   );
 }
 
-const naira=n=>`₦${Number(n||0).toLocaleString()}`;
-const TASK_ICON={video:'▶',follow:'👤',like:'❤️',comment:'💬'};
+const naira=n=>`\u20a6${Number(n||0).toLocaleString()}`;
+const TASK_ICON={video:'\u25b6',follow:'\U0001f464',like:'\u2764\ufe0f',comment:'\U0001f4ac'};
 const TASK_CLR={
   video:{bg:'#fee2e2',text:'#dc2626',border:'#fca5a5'},
   follow:{bg:'#dbeafe',text:'#2563eb',border:'#93c5fd'},
   like:{bg:'#fce7f3',text:'#db2777',border:'#f9a8d4'},
   comment:{bg:'#fef3c7',text:'#d97706',border:'#fcd34d'},
 };
-const SK={
-  TASKS:'9jw_tasks', SESSION:'9jw_active_session',
-  UP:e=>`9jw_user_${e.toLowerCase()}`
-};
+const SK={ TASKS:'9jw_tasks', SESSION:'9jw_active_session', UP:e=>`9jw_user_${e.toLowerCase()}` };
 const store={
   get:(k,fb=null)=>{ try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch{return fb;} },
   set:(k,v)=>{ try{localStorage.setItem(k,JSON.stringify(v));}catch{} }
 };
-const INIT_TASKS=[
-  {id:1,type:'video',title:'Watch GTBank 2026 Brand Video',url:'https://youtube.com',reward:150,plan:'both'},
-  {id:2,type:'video',title:'Watch Flutterwave Campaign Video',url:'https://youtube.com',reward:150,plan:'both'},
-  {id:3,type:'video',title:'Watch Dangote Foundation Advert',url:'https://youtube.com',reward:200,plan:'both'},
-  {id:4,type:'follow',title:'Follow @NigerianStartups on Instagram',url:'https://instagram.com',reward:100,plan:'both'},
-  {id:5,type:'follow',title:'Follow @TechPointNG on Twitter',url:'https://twitter.com',reward:100,plan:'both'},
-  {id:6,type:'like',title:'Like  New Feature Post',url:'https://twitter.com',reward:80,plan:'both'},
-  {id:7,type:'like',title:'Like Africa Fintech Festival Post',url:'https://instagram.com',reward:80,plan:'both'},
-  {id:8,type:'comment',title:'Comment on MTN Data Offer Post',url:'https://facebook.com',reward:120,plan:'both'},
-  {id:9,type:'video',title:'Watch Konga Flash Sale Ad',url:'https://youtube.com',reward:250,plan:'premium'},
-  {id:10,type:'video',title:'Watch Zenith Bank Digital Ad',url:'https://youtube.com',reward:250,plan:'premium'},
-  {id:11,type:'follow',title:'Follow @LagosTechHub on LinkedIn',url:'https://linkedin.com',reward:150,plan:'premium'},
-  {id:12,type:'follow',title:'Follow @NaijaTech on Instagram',url:'https://instagram.com',reward:150,plan:'premium'},
-  {id:13,type:'follow',title:'Follow @AfricanStartups on Twitter',url:'https://twitter.com',reward:150,plan:'premium'},
-  {id:14,type:'like',title:'Like Cowrywise Investment Tips Post',url:'https://twitter.com',reward:100,plan:'premium'},
-  {id:15,type:'like',title:'Like Carbon Financial Services Post',url:'https://instagram.com',reward:100,plan:'premium'},
-  {id:16,type:'comment',title:'Comment on Piggyvest Savings Post',url:'https://instagram.com',reward:200,plan:'premium'},
-  {id:17,type:'comment',title:'Comment on ChipperCash Promo',url:'https://facebook.com',reward:200,plan:'premium'},
-  {id:18,type:'video',title:'Watch Access Bank Youth Campaign',url:'https://youtube.com',reward:300,plan:'premium'},
-  {id:19,type:'follow',title:'Follow @StartupNation on Twitter',url:'https://twitter.com',reward:150,plan:'premium'},
-  {id:20,type:'like',title:'Like Andela Nigeria Careers Post',url:'https://linkedin.com',reward:120,plan:'premium'},
-];
-
 const mapWD = w => ({
-  id: w.id,
-  user: w.user_name || w.user || 'Unknown',
-  email: w.email || '',
-  plan: w.plan || '',
-  bank: w.bank || '',
-  account: w.account_number || w.account || '',
-  accountName: w.account_name || w.accountName || '',
-  amount: w.amount,
-  status: w.status,
-  date: w.request_date || w.date || '—',
+  id:w.id, user:w.user_name||w.user||'Unknown', email:w.email||'', plan:w.plan||'',
+  bank:w.bank||'', account:w.account_number||w.account||'',
+  accountName:w.account_name||w.accountName||'', amount:w.amount,
+  status:w.status, date:w.request_date||w.date||'\u2014',
 });
-
 const exportXLS=(data,fname,sheet='Sheet1')=>{
   if(!window.XLSX){toast.error('Export Error','XLSX library not loaded.');return;}
   const wb=window.XLSX.utils.book_new(),ws=window.XLSX.utils.json_to_sheet(data);
@@ -358,7 +274,7 @@ function TaskCard({task,onComplete,globalUserTasksState}){
         </div>
       </div>
       <div style={{flexShrink:0}}>
-        {done?(<div style={{display:'flex',alignItems:'center',gap:6,color:'var(--green)',fontWeight:700,fontSize:13}}><span style={{width:22,height:22,borderRadius:'50%',background:'var(--green-light)',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:11}}>✓</span>Credited</div>)
+        {done?(<div style={{display:'flex',alignItems:'center',gap:6,color:'var(--green)',fontWeight:700,fontSize:13}}><span style={{width:22,height:22,borderRadius:'50%',background:'var(--green-light)',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:11}}>\u2713</span>Credited</div>)
         :state==='idle'?(<button className="btn btn-primary btn-sm" onClick={startTask}>Start</button>)
         :(<div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:5}}><div className="timer-ring"><span style={{color:'var(--gold)',fontWeight:900,fontSize:15}}>{secs}s</span></div><div className="progress-track" style={{width:52}}><div className="progress-fill" style={{width:`${((30-secs)/30)*100}%`,background:'var(--gold)'}}/></div></div>)}
       </div>
@@ -366,7 +282,7 @@ function TaskCard({task,onComplete,globalUserTasksState}){
   );
 }
 function MobileHeader({onMenuOpen,balance}){
-  return(<div className="mobile-header"><button style={{background:'none',border:'none',cursor:'pointer',fontSize:22,color:'var(--text)'}} onClick={onMenuOpen}>☰</button><Logo size="sm"/><div style={{fontSize:13,fontWeight:800,color:'var(--green)'}}>{naira(balance)}</div></div>);
+  return(<div className="mobile-header"><button style={{background:'none',border:'none',cursor:'pointer',fontSize:22,color:'var(--text)'}} onClick={onMenuOpen}>\u2630</button><Logo size="sm"/><div style={{fontSize:13,fontWeight:800,color:'var(--green)'}}>{naira(balance)}</div></div>);
 }
 function SidebarContent({items,active,setPage,plan,onLogout,onUpgrade,pendingCount,currentUser}){
   const dn=plan==='admin'?'Administrator':(currentUser?.name?.split(' ')[0]||'Member');
@@ -389,8 +305,8 @@ function SidebarContent({items,active,setPage,plan,onLogout,onUpgrade,pendingCou
       ))}
     </div>
     <div style={{padding:'12px 10px',borderTop:'1px solid var(--border)'}}>
-      {plan==='basic'&&<button className="btn btn-gold btn-sm btn-full" style={{marginBottom:8}} onClick={onUpgrade}>⭐ Upgrade to Premium</button>}
-      <button className="btn btn-ghost btn-sm btn-full" onClick={onLogout}>← Logout</button>
+      {plan==='basic'&&<button className="btn btn-gold btn-sm btn-full" style={{marginBottom:8}} onClick={onUpgrade}>\u2b50 Upgrade to Premium</button>}
+      <button className="btn btn-ghost btn-sm btn-full" onClick={onLogout}>\u2190 Logout</button>
     </div>
   </>);
 }
@@ -403,6 +319,7 @@ function Sidebar({items,active,setPage,plan,onLogout,onUpgrade,pendingCount,curr
   </>);
 }
 
+// ── LANDING ────────────────────────────────────────────────────────────────
 function LandingPage({setScreen,setPlanSelection}){
   return(
     <div className="fade-in">
@@ -416,15 +333,15 @@ function LandingPage({setScreen,setPlanSelection}){
       <section className="hero-section">
         <div className="hero-bg"/><div className="hero-dots"/>
         <div className="hero-content">
-          <div className="pill" style={{background:'var(--green-light)',color:'var(--green)',border:'1px solid #86efac',marginBottom:24}}>🇳🇬 Nigeria's #1 Micro-Task Earning Platform</div>
+          <div className="pill" style={{background:'var(--green-light)',color:'var(--green)',border:'1px solid #86efac',marginBottom:24}}>\U0001f1f3\U0001f1ec Nigeria's #1 Micro-Task Earning Platform</div>
           <h1 className="hero-title" style={{fontSize:52,fontWeight:900,lineHeight:1.1,marginBottom:20,fontFamily:"'Sora',sans-serif"}}>Get Paid Real Cash<br/><span className="gradient-text"><span id="tw-target">For Every Click You Make</span><span className="tw-cursor"/></span></h1>
-          <p style={{color:'var(--text-2)',fontSize:17,lineHeight:1.7,maxWidth:580,margin:'0 auto 36px'}}>Watch brand videos, follow pages, and engage with content. Earn instant Naira — withdrawn directly to your bank account.</p>
+          <p style={{color:'var(--text-2)',fontSize:17,lineHeight:1.7,maxWidth:580,margin:'0 auto 36px'}}>Watch brand videos, follow pages, and engage with content. Earn instant Naira \u2014 withdrawn directly to your bank account.</p>
           <div className="hero-btns" style={{display:'flex',gap:14,justifyContent:'center',flexWrap:'wrap'}}>
-            <button className="btn btn-primary btn-lg" onClick={()=>{setPlanSelection('premium');setScreen('signup');}}>🚀 Start Earning — Premium</button>
-            <button className="btn btn-outline btn-lg" onClick={()=>document.getElementById('tiers').scrollIntoView({behavior:'smooth'})}>View Plans ↓</button>
+            <button className="btn btn-primary btn-lg" onClick={()=>{setPlanSelection('premium');setScreen('signup');}}>🚀 Start Earning \u2014 Premium</button>
+            <button className="btn btn-outline btn-lg" onClick={()=>document.getElementById('tiers').scrollIntoView({behavior:'smooth'})}>View Plans \u2193</button>
           </div>
           <div style={{display:'flex',gap:32,justifyContent:'center',marginTop:48,flexWrap:'wrap'}}>
-            {[['12,000+','Active Earners'],['₦4M+','Paid Out'],['100%','Legit & Secure']].map(([v,l])=>(
+            {[['12,000+','Active Earners'],['\u20a64M+','Paid Out'],['100%','Legit & Secure']].map(([v,l])=>(
               <div key={l} style={{textAlign:'center'}}><div style={{fontSize:22,fontWeight:900,color:'var(--green)',fontFamily:"'Sora',sans-serif"}}>{v}</div><div style={{fontSize:12,color:'var(--text-3)',fontWeight:600,marginTop:2}}>{l}</div></div>
             ))}
           </div>
@@ -438,28 +355,29 @@ function LandingPage({setScreen,setPlanSelection}){
         <div className="plan-cards-grid" style={{display:'flex',gap:28,justifyContent:'center',flexWrap:'wrap'}}>
           <div className="plan-card">
             <Badge color="green">Basic Plan</Badge>
-            <div style={{fontSize:44,fontWeight:900,margin:'18px 0 4px',fontFamily:"'Sora',sans-serif"}}>₦4,000</div>
+            <div style={{fontSize:44,fontWeight:900,margin:'18px 0 4px',fontFamily:"'Sora',sans-serif"}}>\u20a64,000</div>
             <div style={{color:'var(--text-3)',fontSize:13,marginBottom:24}}>One-time activation fee</div>
             <div className="divider"/>
-            {['8 tasks per day','₦500 welcome bonus credit','₦500 per referral earned','Direct bank withdrawal','-secured payments'].map(f=>(<div key={f} style={{display:'flex',gap:10,marginBottom:12,fontSize:14,color:'var(--text-2)',alignItems:'center'}}><span style={{color:'var(--green)',fontWeight:800,fontSize:13,width:18,flexShrink:0}}>✓</span>{f}</div>))}
-            <button className="btn btn-outline btn-full" style={{marginTop:24}} onClick={()=>{setPlanSelection('basic');setScreen('signup');}}>Get Started — Basic</button>
+            {['8 tasks per day','\u20a6500 welcome bonus credit','\u20a6500 per referral earned','Direct bank withdrawal','Paystack-secured payments'].map(f=>(<div key={f} style={{display:'flex',gap:10,marginBottom:12,fontSize:14,color:'var(--text-2)',alignItems:'center'}}><span style={{color:'var(--green)',fontWeight:800,fontSize:13,width:18,flexShrink:0}}>\u2713</span>{f}</div>))}
+            <button className="btn btn-outline btn-full" style={{marginTop:24}} onClick={()=>{setPlanSelection('basic');setScreen('signup');}}>Get Started \u2014 Basic</button>
           </div>
           <div className="plan-card featured" style={{position:'relative'}}>
             <div style={{position:'absolute',top:-14,right:20,background:'var(--gold)',color:'#fff',fontWeight:800,fontSize:11,borderRadius:99,padding:'5px 14px'}}>BEST VALUE</div>
             <Badge color="purple">Premium Plan</Badge>
-            <div style={{fontSize:44,fontWeight:900,margin:'18px 0 4px',color:'var(--purple)',fontFamily:"'Sora',sans-serif"}}>₦8,000</div>
+            <div style={{fontSize:44,fontWeight:900,margin:'18px 0 4px',color:'var(--purple)',fontFamily:"'Sora',sans-serif"}}>\u20a68,000</div>
             <div style={{color:'var(--text-3)',fontSize:13,marginBottom:24}}>One-time activation fee</div>
             <div className="divider"/>
-            {['20 high-yield tasks per day','₦1,000 welcome bonus credit','₦1,000 per referral earned','Priority withdrawal processing','Exclusive premium-only task pools'].map(f=>(<div key={f} style={{display:'flex',gap:10,marginBottom:12,fontSize:14,color:'var(--text-2)',alignItems:'center'}}><span style={{color:'var(--purple)',fontWeight:800,fontSize:13,width:18,flexShrink:0}}>✓</span>{f}</div>))}
-            <button className="btn btn-purple btn-full" style={{marginTop:24}} onClick={()=>{setPlanSelection('premium');setScreen('signup');}}>Get Started — Premium</button>
+            {['20 high-yield tasks per day','\u20a61,000 welcome bonus credit','\u20a61,000 per referral earned','Priority withdrawal processing','Exclusive premium-only task pools'].map(f=>(<div key={f} style={{display:'flex',gap:10,marginBottom:12,fontSize:14,color:'var(--text-2)',alignItems:'center'}}><span style={{color:'var(--purple)',fontWeight:800,fontSize:13,width:18,flexShrink:0}}>\u2713</span>{f}</div>))}
+            <button className="btn btn-purple btn-full" style={{marginTop:24}} onClick={()=>{setPlanSelection('premium');setScreen('signup');}}>Get Started \u2014 Premium</button>
           </div>
         </div>
       </section>
-      <footer style={{textAlign:'center',padding:'28px 20px',borderTop:'1px solid var(--border)',color:'var(--text-3)',fontSize:13}}>© 2026 9jaWatchers · Nigeria's Trusted Task Earning Platform</footer>
+      <footer style={{textAlign:'center',padding:'28px 20px',borderTop:'1px solid var(--border)',color:'var(--text-3)',fontSize:13}}>\u00a9 2026 9jaWatchers \u00b7 Nigeria's Trusted Task Earning Platform</footer>
     </div>
   );
 }
 
+// ── AUTH ───────────────────────────────────────────────────────────────────
 function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterNewUser}){
   const isLogin=mode==='login';
   const [step,setStep]=useState(1);
@@ -491,6 +409,7 @@ function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterN
     finally{setBusy(false);}
   };
 
+  // ── FIX: Complete handlePaystack with all callbacks properly closed ──
   const handlePaystack=()=>{
     const email=form.email.toLowerCase().trim();
     if(!email||!form.name.trim()){toast.error('Missing Info','Fill in name and email.');setStep(1);return;}
@@ -502,46 +421,76 @@ function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterN
         key:'pk_test_59b624a7a9d7733af6f2e5407ec0c6ee2cea1428',
         email,amount:amt,currency:'NGN',
         metadata:{custom_fields:[{display_name:'Full Name',variable_name:'customer_name',value:form.name},{display_name:'Plan',variable_name:'plan',value:selPlan}]},
-        onSuccess:async(tx)=>{
-          toast.info('Payment Received',`Ref: ${tx.reference} — Setting up account…`);
+        onSuccess: async (tx) => {
+          toast.info('Payment Received',`Ref: ${tx.reference} \u2014 Setting up account\u2026`);
           setBusy(true);
           try{
-            const {data:authData,error:authErr}=await db.auth.signUp({email:form.email.toLowerCase().trim(),password:form.password});
+            // Wait 2s to clear Supabase auth rate limit window
+            await new Promise(r=>setTimeout(r,2000));
+            let authData,authErr;
+            // Retry up to 3 times with 5s gap
+            for(let attempt=1;attempt<=3;attempt++){
+              ({data:authData,error:authErr}=await db.auth.signUp({email:form.email.toLowerCase().trim(),password:form.password}));
+              if(!authErr)break;
+              if(authErr.message?.includes('security')||authErr.message?.includes('seconds')){
+                if(attempt<3){
+                  toast.info('Almost There\u2026',`Setting up your account (attempt ${attempt+1}/3)\u2026`);
+                  await new Promise(r=>setTimeout(r,6000));
+                }
+              } else { break; }
+            }
             if(authErr)throw authErr;
             const bal=selPlan==='premium'?1000:500;
             const profile={id:authData.user.id,name:form.name,email:form.email.toLowerCase().trim(),plan:selPlan,balance:bal,paid:true,status:'active',joined:new Date().toLocaleDateString('en-NG',{day:'2-digit',month:'short',year:'numeric'}),total_referrals:0,referral_earnings:0};
             const {error:pErr}=await db.from('profiles').insert([profile]);
             if(pErr)throw pErr;
+            // ── Referral handling ──
             const ref=localStorage.getItem('9ja_active_ref_code');
             if(ref){
-              const snip=ref.split('-').pop();
-              const {data:all}=await adminDb.from('profiles').select('*');
-              if(all){
-                const parent=all.find(p=>p.id&&p.id.toString().slice(-4)===snip);
+              try{
+                const snip=ref.split('-').pop();
+                console.log('[Referral] Looking for parent with ID ending in:',snip);
+                const {data:all,error:refErr}=await adminDb.from('profiles').select('id,name,plan,balance,total_referrals,referral_earnings');
+                if(refErr)throw refErr;
+                const parent=all?.find(p=>p.id&&p.id.toString().slice(-4)===snip);
+                console.log('[Referral] Parent found:',parent?`${parent.name} (${parent.id})`:'NOT FOUND');
                 if(parent){
                   const comm=parent.plan==='premium'?1000:500;
-                  await adminDb.from('profiles').update({balance:(parent.balance||0)+comm,total_referrals:(parent.total_referrals||0)+1,referral_earnings:(parent.referral_earnings||0)+comm}).eq('id',parent.id);
+                  const {error:updateErr}=await adminDb.from('profiles').update({balance:(parent.balance||0)+comm,total_referrals:(parent.total_referrals||0)+1,referral_earnings:(parent.referral_earnings||0)+comm}).eq('id',parent.id);
+                  if(updateErr)throw updateErr;
+                  console.log('[Referral] \u2705 Commission \u20a6'+comm+' credited to',parent.name);
                   localStorage.removeItem('9ja_active_ref_code');
-                }
-              }
+                } else { console.warn('[Referral] \u26a0\ufe0f No profile matched snip:',snip); }
+              }catch(refErr){ console.error('[Referral] \u274c Error:',refErr.message); }
             }
             store.set(SK.UP(form.email),profile);
             if(onRegisterNewUser)onRegisterNewUser({id:profile.id,name:profile.name,email:profile.email,plan:profile.plan,balance:profile.balance,joined:profile.joined,tasks:0,refs:0,status:'active'});
-            toast.success('Welcome to 9jaWatchers! 🎉',`Account live, ${form.name.split(' ')[0]}!`);
+            toast.success('Welcome to 9jaWatchers! \U0001f389',`Account live, ${form.name.split(' ')[0]}!`);
             onLoginSuccess(selPlan,profile);
-          }catch(err){toast.error('Setup Failed',`Payment ok but setup failed: ${err.message}`);}
-          finally{setBusy(false);}
+          }catch(err){
+            if(err.message?.includes('security')||err.message?.includes('seconds')){
+              toast.error('Rate Limited','Payment received! Wait 15 seconds then click Activate again.');
+            } else {
+              toast.error('Setup Failed',`Payment received but setup failed: ${err.message}`);
+            }
+          }finally{setBusy(false);}
         },
-        onCancel:()=>toast.warning('Payment Cancelled','Not completed.'),
-        onError:err=>toast.error('Payment Error',err.message||'Something went wrong.')
+        onCancel:()=>toast.warning('Payment Cancelled','Transaction not completed.'),
+        onError:(err)=>{
+          console.error('Paystack error:',err);
+          toast.error('Payment Error',err.message||'Paystack could not process this. Check your domain is whitelisted.');
+        }
       });
-    }catch(err){toast.error('Gateway Error','Unable to connect to Paystack.');}
+    }catch(err){
+      console.error('Paystack constructor error:',err);
+      toast.error('Gateway Error',`Could not initialise Paystack: ${err.message}`);
+    }
   };
 
   return(
     <div style={{minHeight:'100vh',background:'var(--bg)',display:'flex',flexDirection:'column'}}>
       <div style={{padding:'16px 24px',borderBottom:'1px solid var(--border)',background:'var(--surface)'}}>
-        <button onClick={()=>setScreen('landing')} style={{background:'none',border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:6,color:'var(--text-2)',fontSize:14,fontWeight:600,fontFamily:'inherit'}}>← <Logo size="sm"/></button>
+        <button onClick={()=>setScreen('landing')} style={{background:'none',border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:6,color:'var(--text-2)',fontSize:14,fontWeight:600,fontFamily:'inherit'}}>\u2190 <Logo size="sm"/></button>
       </div>
       <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
         <div className="fade-in" style={{width:'100%',maxWidth:440}}>
@@ -561,7 +510,7 @@ function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterN
                 <div><label style={{fontSize:12,fontWeight:700,color:'var(--text-2)',display:'block',marginBottom:6}}>Email Address <span style={{color:'var(--red)'}}>*</span></label><input required type="email" className="input" placeholder="you@example.com" value={form.email} onChange={e=>sf('email',e.target.value)}/></div>
                 {!isLogin&&(<div><label style={{fontSize:12,fontWeight:700,color:'var(--text-2)',display:'block',marginBottom:6}}>Phone Number <span style={{color:'var(--red)'}}>*</span></label><input required type="tel" className="input" placeholder="08012345678" value={form.phone} onChange={e=>sf('phone',e.target.value)}/></div>)}
                 <div><label style={{fontSize:12,fontWeight:700,color:'var(--text-2)',display:'block',marginBottom:6}}>Password <span style={{color:'var(--red)'}}>*</span></label><input required type="password" className="input" placeholder="At least 8 characters" value={form.password} onChange={e=>sf('password',e.target.value)}/></div>
-                <button className="btn btn-primary btn-full btn-lg" disabled={busy} type="submit" style={{marginTop:6}}>{busy?'⟳ Please wait…':isLogin?'Sign In':'Continue to Payment →'}</button>
+                <button className="btn btn-primary btn-full btn-lg" disabled={busy} type="submit" style={{marginTop:6}}>{busy?'\u27f3 Please wait\u2026':isLogin?'Sign In':'Continue to Payment \u2192'}</button>
                 <p style={{textAlign:'center',fontSize:13,color:'var(--text-3)',marginTop:4}}>
                   {isLogin?"Don't have an account? ":'Already registered? '}
                   <span style={{color:'var(--green)',cursor:'pointer',fontWeight:700}} onClick={()=>setScreen(isLogin?'signup':'login')}>{isLogin?'Register here':'Sign in'}</span>
@@ -570,16 +519,16 @@ function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterN
             ):(
               <div className="slide-down" style={{display:'flex',flexDirection:'column',gap:14}}>
                 <div style={{display:'flex',flexDirection:'column',gap:10}}>
-                  {[{key:'basic',label:'Basic Plan',price:'₦4,000',desc:'8 tasks/day · ₦500 bonus'},{key:'premium',label:'Premium Plan',price:'₦8,000',desc:'20 tasks/day · ₦1,000 bonus',hi:true}].map(p=>(
+                  {[{key:'basic',label:'Basic Plan',price:'\u20a64,000',desc:'8 tasks/day \u00b7 \u20a6500 bonus'},{key:'premium',label:'Premium Plan',price:'\u20a68,000',desc:'20 tasks/day \u00b7 \u20a61,000 bonus',hi:true}].map(p=>(
                     <div key={p.key} onClick={()=>setSelPlan(p.key)} style={{padding:'14px 16px',borderRadius:10,cursor:'pointer',border:`2px solid ${selPlan===p.key?(p.hi?'var(--purple)':'var(--green)'):'var(--border)'}`,background:selPlan===p.key?(p.hi?'var(--purple-light)':'var(--green-light)'):'var(--bg)',transition:'all 0.2s',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                       <div><div style={{fontWeight:800,fontSize:14}}>{p.label}</div><div style={{fontSize:12,color:'var(--text-3)',marginTop:2}}>{p.desc}</div></div>
                       <div style={{fontWeight:900,fontSize:16,color:p.hi?'var(--purple)':'var(--green)'}}>{p.price}</div>
                     </div>
                   ))}
                 </div>
-                <div className="info-box" style={{background:'var(--green-light)',borderRadius:'var(--radius-sm)'}}><span>🔒</span><div style={{fontSize:13,color:'var(--text-2)',lineHeight:1.5}}>Secured by <strong>Paystack</strong>. Fully encrypted.</div></div>
-                <button className="btn btn-primary btn-full btn-lg" disabled={busy} onClick={handlePaystack}>{busy?'⟳ Processing…':`Pay ${selPlan==='premium'?'₦8,000':'₦4,000'} & Activate`}</button>
-                <button className="btn btn-ghost btn-sm btn-full" onClick={()=>setStep(1)}>← Go Back</button>
+                <div className="info-box" style={{background:'var(--green-light)',borderRadius:'var(--radius-sm)'}}><span>\U0001f512</span><div style={{fontSize:13,color:'var(--text-2)',lineHeight:1.5}}>Secured by <strong>Paystack</strong>. Fully encrypted.</div></div>
+                <button className="btn btn-primary btn-full btn-lg" disabled={busy} onClick={handlePaystack}>{busy?'\u27f3 Processing\u2026':`Pay ${selPlan==='premium'?'\u20a68,000':'\u20a64,000'} & Activate`}</button>
+                <button className="btn btn-ghost btn-sm btn-full" onClick={()=>setStep(1)}>\u2190 Go Back</button>
               </div>
             )}
           </div>
@@ -589,6 +538,7 @@ function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterN
   );
 }
 
+// ── USER DASHBOARD ─────────────────────────────────────────────────────────
 function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasksState,setGlobalUserTasksState,currentUser}){
   const [page,setPage]=useState('dashboard');
   const [wdSuccess,setWdSuccess]=useState(false);
@@ -596,75 +546,78 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
   const [showUpgrade,setShowUpgrade]=useState(false);
   const [liveRefs,setLiveRefs]=useState(currentUser?.total_referrals||0);
   const [liveEarn,setLiveEarn]=useState(currentUser?.referral_earnings||0);
+  const [tasksList,setTasksList]=useState(()=>store.get(SK.TASKS)||[]);
+  const tasksListRef=useRef(tasksList);
+  useEffect(()=>{tasksListRef.current=tasksList;},[tasksList]);
 
-  const [tasksList, setTasksList] = useState(() => store.get(SK.TASKS) || []);
-  const tasksListRef = useRef(tasksList);
-  useEffect(() => { tasksListRef.current = tasksList; }, [tasksList]);
-
-  useEffect(() => {
-    const fetchTasks = async () => {
-      try {
-        const { data, error } = await db.from('tasks').select('*').order('id', { ascending: true });
-        if (!error && data && data.length > 0) {
-          setTasksList(data);
-          store.set(SK.TASKS, data);
-        }
-      } catch(e) {}
+  // ── FIX: Tasks useEffect fully intact ──
+  useEffect(()=>{
+    const fetchTasks=async()=>{
+      try{
+        const {data,error}=await db.from('tasks').select('*').order('id',{ascending:true});
+        if(!error&&data&&data.length>0){setTasksList(data);store.set(SK.TASKS,data);}
+      }catch(e){}
     };
     fetchTasks();
-    const ch = db.channel('tasks-realtime-user')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => { fetchTasks(); })
-      .subscribe((status) => { if (status === 'SUBSCRIBED') { fetchTasks(); } });
-    return () => { db.removeChannel(ch); };
-  }, []);
+    const ch=db.channel('tasks-realtime-user')
+      .on('postgres_changes',{event:'*',schema:'public',table:'tasks'},()=>{fetchTasks();})
+      .subscribe((status)=>{if(status==='SUBSCRIBED'){fetchTasks();}});
+    return()=>{db.removeChannel(ch);};
+  },[]);
 
-  const [userWD, setUserWD] = useState([]);
-  const [wdLoading, setWdLoading] = useState(false);
+  // ── Live profile balance/referral watcher ──
+  useEffect(()=>{
+    if(!currentUser?.id)return;
+    const ch=db.channel(`profile-balance-${currentUser.id}`)
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'profiles',filter:`id=eq.${currentUser.id}`},(payload)=>{
+        if(!payload.new)return;
+        console.log('[Profile RT] Balance update received:',payload.new);
+        if(payload.new.balance!==undefined)setUserBalance(payload.new.balance);
+        if(payload.new.total_referrals!==undefined)setLiveRefs(payload.new.total_referrals);
+        if(payload.new.referral_earnings!==undefined)setLiveEarn(payload.new.referral_earnings);
+      })
+      .subscribe((status)=>{console.log('[Profile RT] Channel status:',status);});
+    return()=>db.removeChannel(ch);
+  },[currentUser?.id]);
 
-  useEffect(() => {
-  if (!currentUser?.email) return;
-  const initialFetch = async () => {
-    const { data: { session } } = await db.auth.getSession();
-    if (!session) return;
-    setWdLoading(true);
-    try {
-      const { data, error } = await db.from('withdrawals').select('*').eq('email', currentUser.email).order('id', { ascending: false });
-      if (!error && data) {
-        setUserWD(data.map(w => ({id:w.id,amount:w.amount,bank:w.bank||'',account:w.account_number||w.account||'',accountName:w.account_name||'',status:w.status,date:w.request_date||w.date||'—'})));
-      }
-    } catch(e) {}
-    finally { setWdLoading(false); }
-  };
-  const realtimeFetch = async () => {
-    try {
-      const { data, error } = await db.from('withdrawals').select('*').eq('email', currentUser.email).order('id', { ascending: false });
-      if (!error && data) {
-        setUserWD(data.map(w => ({id:w.id,amount:w.amount,bank:w.bank||'',account:w.account_number||w.account||'',accountName:w.account_name||'',status:w.status,date:w.request_date||w.date||'—'})));
-      }
-    } catch(e) {}
-  };
-  initialFetch();
-  const { data: { subscription: authSub } } = db.auth.onAuthStateChange((event, session) => {
-    if (session && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) { initialFetch(); }
-  });
-  const ch = db.channel(`user-wd-${currentUser.email}`)
-    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'withdrawals',filter:`email=eq.${currentUser.email}`},
-    (payload) => {
-      if (payload.new) {
-        setUserWD(prev => prev.map(w => w.id === payload.new.id ? {...w,status:payload.new.status,amount:payload.new.amount,bank:payload.new.bank||w.bank,account:payload.new.account_number||w.account,accountName:payload.new.account_name||w.accountName,date:payload.new.request_date||w.date} : w));
-      }
-      realtimeFetch();
-    }).subscribe();
-  return () => { authSub.unsubscribe(); db.removeChannel(ch); };
-}, [currentUser?.email]);
+  const [userWD,setUserWD]=useState([]);
+  const [wdLoading,setWdLoading]=useState(false);
+  useEffect(()=>{
+    if(!currentUser?.email)return;
+    const initialFetch=async()=>{
+      const {data:{session}}=await db.auth.getSession();
+      if(!session)return;
+      setWdLoading(true);
+      try{
+        const {data,error}=await db.from('withdrawals').select('*').eq('email',currentUser.email).order('id',{ascending:false});
+        if(!error&&data){setUserWD(data.map(w=>({id:w.id,amount:w.amount,bank:w.bank||'',account:w.account_number||w.account||'',accountName:w.account_name||'',status:w.status,date:w.request_date||w.date||'\u2014'})));}
+      }catch(e){}
+      finally{setWdLoading(false);}
+    };
+    const realtimeFetch=async()=>{
+      try{
+        const {data,error}=await db.from('withdrawals').select('*').eq('email',currentUser.email).order('id',{ascending:false});
+        if(!error&&data){setUserWD(data.map(w=>({id:w.id,amount:w.amount,bank:w.bank||'',account:w.account_number||w.account||'',accountName:w.account_name||'',status:w.status,date:w.request_date||w.date||'\u2014'})));}
+      }catch(e){}
+    };
+    initialFetch();
+    const {data:{subscription:authSub}}=db.auth.onAuthStateChange((event,session)=>{
+      if(session&&(event==='INITIAL_SESSION'||event==='SIGNED_IN'||event==='TOKEN_REFRESHED')){initialFetch();}
+    });
+    const ch=db.channel(`user-wd-${currentUser.email}`)
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'withdrawals',filter:`email=eq.${currentUser.email}`},(payload)=>{
+        if(payload.new){setUserWD(prev=>prev.map(w=>w.id===payload.new.id?{...w,status:payload.new.status,amount:payload.new.amount,bank:payload.new.bank||w.bank,account:payload.new.account_number||w.account,accountName:payload.new.account_name||w.accountName,date:payload.new.request_date||w.date}:w));}
+        realtimeFetch();
+      }).subscribe();
+    return()=>{authSub.unsubscribe();db.removeChannel(ch);};
+  },[currentUser?.email]);
 
   const isPrem=plan==='premium';
   const myTasks=tasksList.filter(t=>t.plan==='both'||t.plan===plan);
   const [histLog,setHistLog]=useState(()=>{
     const s=store.get(SK.UP(currentUser?.email||''));
-    return s?.historyLog||[{label:'Welcome Bonus — Account Activated',amount:isPrem?1000:500,type:'credit',timestamp:'Account Created'}];
+    return s?.historyLog||[{label:'Welcome Bonus \u2014 Account Activated',amount:isPrem?1000:500,type:'credit',timestamp:'Account Created'}];
   });
-
   useEffect(()=>{
     if(!currentUser?.id||page!=='referrals')return;
     const f=async()=>{
@@ -692,9 +645,7 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
     setGlobalUserTasksState(newState);setUserBalance(newBal);
     const t=myTasks.find(t=>t.id===taskId);
     setHistLog(p=>[{label:`Task: ${t?.title?.substring(0,40)||'Task'}`,amount:reward,type:'credit',timestamp:'Just Now'},...p]);
-    if(currentUser?.id){
-      try{ await db.from('profiles').update({balance:newBal,tasks_state:newState}).eq('id',currentUser.id); }catch(e){}
-    }
+    if(currentUser?.id){try{await db.from('profiles').update({balance:newBal,tasks_state:newState}).eq('id',currentUser.id);}catch(e){}}
     const s=store.get(SK.UP(currentUser?.email||''))||{};
     store.set(SK.UP(currentUser?.email||''),{...s,balance:newBal,tasksState:newState});
   };
@@ -702,7 +653,7 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
   const submitWD=async(e)=>{
     e.preventDefault();
     const amt=Number(wdForm.amount);
-    if(amt<2000){toast.error('Minimum Amount','Minimum withdrawal is ₦2,000.');return;}
+    if(amt<2000){toast.error('Minimum Amount','Minimum withdrawal is \u20a62,000.');return;}
     if(amt>userBalance){toast.error('Insufficient Balance',`Your balance is ${naira(userBalance)}.`);return;}
     const newBal=userBalance-amt;
     setUserBalance(newBal);
@@ -718,14 +669,14 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
   };
 
   const statusStyle=s=>s==='approved'?{background:'var(--green-light)',color:'var(--green)',border:'1px solid #86efac'}:s==='rejected'?{background:'var(--red-light)',color:'var(--red)',border:'1px solid #fca5a5'}:{background:'var(--gold-light)',color:'var(--gold)',border:'1px solid #fcd34d'};
-  const statusIcon=s=>s==='approved'?'✓':s==='rejected'?'✕':'⏳';
+  const statusIcon=s=>s==='approved'?'\u2713':s==='rejected'?'\u2715':'\u23f3';
 
   const navItems=[
-    {id:'dashboard',icon:'🏠',label:'Dashboard'},
-    {id:'withdraw',icon:'💳',label:'Withdraw Funds'},
-    {id:'wd-history',icon:'🧾',label:'Withdrawal History'},
-    {id:'referrals',icon:'👥',label:'Referrals'},
-    {id:'history',icon:'📜',label:'Transaction History'},
+    {id:'dashboard',icon:'\U0001f3e0',label:'Dashboard'},
+    {id:'withdraw',icon:'\U0001f4b3',label:'Withdraw Funds'},
+    {id:'wd-history',icon:'\U0001f9fe',label:'Withdrawal History'},
+    {id:'referrals',icon:'\U0001f465',label:'Referrals'},
+    {id:'history',icon:'\U0001f4dc',label:'Transaction History'},
   ];
 
   return(
@@ -734,29 +685,28 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
       {showUpgrade&&(
         <div className="modal-overlay" onClick={()=>setShowUpgrade(false)}>
           <div className="modal-box" onClick={e=>e.stopPropagation()}>
-            <div style={{textAlign:'center',marginBottom:20}}><div style={{fontSize:40,marginBottom:12}}>⭐</div><h3 style={{fontSize:20,fontWeight:900,marginBottom:8}}>Upgrade to Premium</h3><p style={{color:'var(--text-2)',fontSize:14,lineHeight:1.6}}>Unlock 20 tasks daily, ₦1,000 bonus, and priority withdrawals.</p></div>
+            <div style={{textAlign:'center',marginBottom:20}}><div style={{fontSize:40,marginBottom:12}}>\u2b50</div><h3 style={{fontSize:20,fontWeight:900,marginBottom:8}}>Upgrade to Premium</h3><p style={{color:'var(--text-2)',fontSize:14,lineHeight:1.6}}>Unlock 20 tasks daily, \u20a61,000 bonus, and priority withdrawals.</p></div>
             <button className="btn btn-gold btn-full" onClick={()=>{
               if(typeof window.PaystackPop==='undefined'){toast.error('Payment Error','Paystack not loaded.');return;}
               const pp=new window.PaystackPop();
               pp.newTransaction({key:'pk_live_56cd68f5adb0e165c34545bee318900fcd3505e3',email:currentUser?.email||'',amount:8000*100,currency:'NGN',
-                onSuccess:async()=>{ setShowUpgrade(false); try{ await db.from('profiles').update({plan:'premium',balance:(userBalance||0)+1000}).eq('id',currentUser.id); setUserBalance(p=>p+1000); toast.success('Upgrade Successful! 🎉','You are now on Premium!'); setTimeout(()=>window.location.reload(),2000); }catch(err){toast.error('Upgrade Error',err.message);} },
+                onSuccess:async()=>{setShowUpgrade(false);try{await db.from('profiles').update({plan:'premium',balance:(userBalance||0)+1000}).eq('id',currentUser.id);setUserBalance(p=>p+1000);toast.success('Upgrade Successful! \U0001f389','You are now on Premium!');setTimeout(()=>window.location.reload(),2000);}catch(err){toast.error('Upgrade Error',err.message);}},
                 onCancel:()=>toast.warning('Cancelled','Upgrade not completed.'),
                 onError:err=>toast.error('Payment Error',err.message||'Something went wrong.')
               });
-            }}>Pay ₦8,000 to Upgrade</button>
+            }}>Pay \u20a68,000 to Upgrade</button>
             <button className="btn btn-ghost btn-sm btn-full" style={{marginTop:8}} onClick={()=>setShowUpgrade(false)}>Maybe Later</button>
           </div>
         </div>
       )}
       <div className="main-scroll">
         <div className="main-content" style={{padding:'32px 36px',maxWidth:900,margin:'0 auto'}}>
-
           {page==='dashboard'&&(<div className="fade-in">
-            <div style={{marginBottom:28}}><h1 style={{fontSize:26,fontWeight:900,marginBottom:4,fontFamily:"'Sora',sans-serif"}}>Hey, {currentUser?.name?.split(' ')[0]||'Earner'} 👋</h1><p style={{color:'var(--text-3)',fontSize:14}}>Here's your earning overview for today.</p></div>
+            <div style={{marginBottom:28}}><h1 style={{fontSize:26,fontWeight:900,marginBottom:4,fontFamily:"'Sora',sans-serif"}}>Hey, {currentUser?.name?.split(' ')[0]||'Earner'} \U0001f44b</h1><p style={{color:'var(--text-3)',fontSize:14}}>Here's your earning overview for today.</p></div>
             <div className="stats-row" style={{display:'flex',gap:16,marginBottom:28,flexWrap:'wrap'}}>
-              <StatCard label="Available Balance" value={naira(userBalance)} icon="💰" accent="gold"/>
-              <StatCard label="Earned Today" value={naira(earnedToday)} icon="📈" accent="green"/>
-              <StatCard label="Tasks Done" value={`${doneCount}/${myTasks.length}`} icon="⚡" accent="blue"/>
+              <StatCard label="Available Balance" value={naira(userBalance)} icon="\U0001f4b0" accent="gold"/>
+              <StatCard label="Earned Today" value={naira(earnedToday)} icon="\U0001f4c8" accent="green"/>
+              <StatCard label="Tasks Done" value={`${doneCount}/${myTasks.length}`} icon="\u26a1" accent="blue"/>
             </div>
             <div className="card" style={{marginBottom:28}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}><span style={{fontWeight:700,fontSize:14}}>Daily Progress</span><span style={{fontWeight:800,color:'var(--green)',fontSize:14}}>{Math.round((doneCount/(myTasks.length||1))*100)}%</span></div>
@@ -774,17 +724,16 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
               {myTasks.length===0?<div className="card" style={{textAlign:'center',padding:40,color:'var(--text-3)'}}>No tasks available. Check back soon!</div>:myTasks.map(task=><TaskCard key={task.id} task={task} onComplete={handleTaskDone} globalUserTasksState={globalUserTasksState}/>)}
             </div>
           </div>)}
-
           {page==='withdraw'&&(<div className="fade-in">
             <div style={{marginBottom:28}}><h1 style={{fontSize:24,fontWeight:900,marginBottom:4,fontFamily:"'Sora',sans-serif"}}>Withdraw Funds</h1><p style={{color:'var(--text-3)',fontSize:14}}>Request a withdrawal to your Nigerian bank account.</p></div>
             {wdSuccess?(
               <div className="card" style={{textAlign:'center',padding:'48px 32px'}}>
-                <div style={{width:64,height:64,borderRadius:'50%',background:'var(--green-light)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28,margin:'0 auto 16px'}}>✓</div>
+                <div style={{width:64,height:64,borderRadius:'50%',background:'var(--green-light)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28,margin:'0 auto 16px'}}>\u2713</div>
                 <h3 style={{fontSize:20,fontWeight:900,marginBottom:8}}>Withdrawal Submitted!</h3>
                 <p style={{color:'var(--text-2)',fontSize:14,marginBottom:24,lineHeight:1.6}}>Pending admin approval. Typically released within 24 hours.</p>
                 <div style={{display:'flex',gap:10,justifyContent:'center',flexWrap:'wrap'}}>
                   <button className="btn btn-primary" onClick={()=>{setWdSuccess(false);setWdForm({bank:'',account:'',name:currentUser?.name||'',amount:''});}}>New Withdrawal</button>
-                  <button className="btn btn-ghost" onClick={()=>setPage('wd-history')}>View History →</button>
+                  <button className="btn btn-ghost" onClick={()=>setPage('wd-history')}>View History \u2192</button>
                 </div>
               </div>
             ):(
@@ -796,35 +745,30 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
                     <select required className="input" value={wdForm.bank} onChange={e=>setWdForm(p=>({...p,bank:e.target.value}))}><option value="">Select your bank</option>{['GTBank','Zenith Bank','Access Bank','UBA','First Bank','Kuda Bank','Opay','PalmPay','Moniepoint','Wema Bank'].map(b=><option key={b} value={b}>{b}</option>)}</select></div>
                     <div><label style={{fontSize:12,fontWeight:700,color:'var(--text-2)',display:'block',marginBottom:6}}>Account Number (10 digits)</label><input required type="text" maxLength={10} pattern="\d{10}" className="input" placeholder="0123456789" value={wdForm.account} onChange={e=>setWdForm(p=>({...p,account:e.target.value}))}/></div>
                     <div><label style={{fontSize:12,fontWeight:700,color:'var(--text-2)',display:'block',marginBottom:6}}>Account Name</label><input required type="text" className="input" placeholder="Name as on bank account" value={wdForm.name} onChange={e=>setWdForm(p=>({...p,name:e.target.value}))}/></div>
-                    <div><label style={{fontSize:12,fontWeight:700,color:'var(--text-2)',display:'block',marginBottom:6}}>Amount (₦)</label><input required type="number" min={2000} max={userBalance} className="input" placeholder="Minimum ₦2,000" value={wdForm.amount} onChange={e=>setWdForm(p=>({...p,amount:e.target.value}))}/></div>
-                    <button className="btn btn-primary btn-full" type="submit" disabled={userBalance<2000} style={{marginTop:6}}>{userBalance<2000?`Need ₦${(2000-userBalance).toLocaleString()} more`:'Submit Withdrawal Request'}</button>
+                    <div><label style={{fontSize:12,fontWeight:700,color:'var(--text-2)',display:'block',marginBottom:6}}>Amount (\u20a6)</label><input required type="number" min={2000} max={userBalance} className="input" placeholder="Minimum \u20a62,000" value={wdForm.amount} onChange={e=>setWdForm(p=>({...p,amount:e.target.value}))}/></div>
+                    <button className="btn btn-primary btn-full" type="submit" disabled={userBalance<2000} style={{marginTop:6}}>{userBalance<2000?`Need \u20a6${(2000-userBalance).toLocaleString()} more`:'Submit Withdrawal Request'}</button>
                   </div>
                 </form>
                 <div style={{flex:1,minWidth:220}}>
                   <div className="card" style={{background:'var(--green-light)',border:'1px solid #86efac'}}>
                     <h4 style={{fontWeight:800,fontSize:13,marginBottom:12,color:'var(--green)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Withdrawal Rules</h4>
-                    {[['Minimum','₦2,000'],['Processing Time','≤ 24 hours'],['Payment Method','Paystack Direct'],['Transaction Fee','₦0.00']].map(([l,v])=>(<div key={l} className="withdraw-info-row"><span>{l}</span><strong style={l==='Transaction Fee'?{color:'var(--green)'}:{}}>{v}</strong></div>))}
+                    {[['Minimum','\u20a62,000'],['Processing Time','\u2264 24 hours'],['Payment Method','Paystack Direct'],['Transaction Fee','\u20a60.00']].map(([l,v])=>(<div key={l} className="withdraw-info-row"><span>{l}</span><strong style={l==='Transaction Fee'?{color:'var(--green)'}:{}}>{v}</strong></div>))}
                   </div>
                 </div>
               </div>
             )}
           </div>)}
-
           {page==='wd-history'&&(<div className="fade-in">
             <div style={{marginBottom:28,display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:12}}>
               <div>
                 <h1 style={{fontSize:24,fontWeight:900,marginBottom:4,fontFamily:"'Sora',sans-serif"}}>Withdrawal History</h1>
-                <div style={{display:'flex',alignItems:'center',gap:6,fontSize:13,color:'var(--text-3)'}}>
-                  <span className="live-dot"/>
-                  <span>Live — updates instantly when admin approves or rejects</span>
-                </div>
+                <div style={{display:'flex',alignItems:'center',gap:6,fontSize:13,color:'var(--text-3)'}}><span className="live-dot"/><span>Live \u2014 updates instantly when admin approves or rejects</span></div>
               </div>
             </div>
-            {wdLoading?(
-              <div className="loader-wrap"><div className="loader-ring"/><span>Loading your withdrawal history…</span></div>
-            ):userWD.length===0?(
+            {wdLoading?(<div className="loader-wrap"><div className="loader-ring"/><span>Loading your withdrawal history\u2026</span></div>)
+            :userWD.length===0?(
               <div className="card" style={{textAlign:'center',padding:'48px 32px'}}>
-                <div style={{fontSize:40,marginBottom:16}}>🧾</div>
+                <div style={{fontSize:40,marginBottom:16}}>\U0001f9fe</div>
                 <h3 style={{fontWeight:800,fontSize:17,marginBottom:8}}>No Withdrawals Yet</h3>
                 <p style={{color:'var(--text-3)',fontSize:14,marginBottom:20}}>You haven't placed any withdrawal requests yet.</p>
                 <button className="btn btn-primary btn-sm" onClick={()=>setPage('withdraw')}>Request Withdrawal</button>
@@ -832,9 +776,9 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
             ):(
               <div style={{display:'flex',flexDirection:'column',gap:12}}>
                 <div className="stats-row" style={{display:'flex',gap:16,marginBottom:8,flexWrap:'wrap'}}>
-                  <StatCard label="Total Requested" value={naira(userWD.reduce((s,w)=>s+w.amount,0))} icon="📤" accent="blue"/>
-                  <StatCard label="Approved" value={naira(userWD.filter(w=>w.status==='approved').reduce((s,w)=>s+w.amount,0))} icon="✅" accent="green"/>
-                  <StatCard label="Pending" value={userWD.filter(w=>w.status==='pending').length} icon="⏳" accent="gold"/>
+                  <StatCard label="Total Requested" value={naira(userWD.reduce((s,w)=>s+w.amount,0))} icon="\U0001f4e4" accent="blue"/>
+                  <StatCard label="Approved" value={naira(userWD.filter(w=>w.status==='approved').reduce((s,w)=>s+w.amount,0))} icon="\u2705" accent="green"/>
+                  <StatCard label="Pending" value={userWD.filter(w=>w.status==='pending').length} icon="\u23f3" accent="gold"/>
                 </div>
                 {userWD.map(w=>(
                   <div key={w.id} className="card" style={{padding:'16px 20px'}}>
@@ -844,29 +788,28 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
                           <div style={{width:38,height:38,borderRadius:10,background:w.status==='approved'?'var(--green-light)':w.status==='rejected'?'var(--red-light)':'var(--gold-light)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>{statusIcon(w.status)}</div>
                           <div><div style={{fontWeight:800,fontSize:16}}>{naira(w.amount)}</div><div style={{fontSize:11,color:'var(--text-3)',marginTop:1}}>{w.date}</div></div>
                         </div>
-                        <div style={{fontSize:12,color:'var(--text-2)',marginLeft:48}}><strong>{w.bank}</strong> · {w.account}{w.accountName?` · ${w.accountName}`:''}</div>
+                        <div style={{fontSize:12,color:'var(--text-2)',marginLeft:48}}><strong>{w.bank}</strong> \u00b7 {w.account}{w.accountName?` \u00b7 ${w.accountName}`:''}</div>
                       </div>
-                      <span className="badge" style={statusStyle(w.status)}>{w.status==='approved'?'✓ Approved':w.status==='rejected'?'✕ Rejected':'⏳ Pending'}</span>
+                      <span className="badge" style={statusStyle(w.status)}>{w.status==='approved'?'\u2713 Approved':w.status==='rejected'?'\u2715 Rejected':'\u23f3 Pending'}</span>
                     </div>
-                    {w.status==='pending'&&<div style={{marginTop:10,paddingTop:10,borderTop:'1px solid var(--border)',fontSize:12,color:'var(--text-3)'}}>ℹ️ Under review — typically processed within 24 hours</div>}
-                    {w.status==='approved'&&<div style={{marginTop:10,paddingTop:10,borderTop:'1px solid var(--border)',fontSize:12,color:'var(--green)',fontWeight:600}}>🎉 Payment approved and sent to your bank account</div>}
-                    {w.status==='rejected'&&<div style={{marginTop:10,paddingTop:10,borderTop:'1px solid var(--border)',fontSize:12,color:'var(--red)',fontWeight:600}}>✕ Request declined. Contact support if you believe this is an error.</div>}
+                    {w.status==='pending'&&<div style={{marginTop:10,paddingTop:10,borderTop:'1px solid var(--border)',fontSize:12,color:'var(--text-3)'}}>\u2139\ufe0f Under review \u2014 typically processed within 24 hours</div>}
+                    {w.status==='approved'&&<div style={{marginTop:10,paddingTop:10,borderTop:'1px solid var(--border)',fontSize:12,color:'var(--green)',fontWeight:600}}>\U0001f389 Payment approved and sent to your bank account</div>}
+                    {w.status==='rejected'&&<div style={{marginTop:10,paddingTop:10,borderTop:'1px solid var(--border)',fontSize:12,color:'var(--red)',fontWeight:600}}>\u2715 Request declined. Contact support if you believe this is an error.</div>}
                   </div>
                 ))}
               </div>
             )}
           </div>)}
-
           {page==='referrals'&&(<div className="fade-in">
-            <div style={{marginBottom:28}}><h1 style={{fontSize:24,fontWeight:900,marginBottom:4,fontFamily:"'Sora',sans-serif"}}>Referral Earnings</h1><p style={{color:'var(--text-3)',fontSize:14}}>Share your link — earn {isPrem?'₦1,000':'₦500'} for every person who registers.</p></div>
+            <div style={{marginBottom:28}}><h1 style={{fontSize:24,fontWeight:900,marginBottom:4,fontFamily:"'Sora',sans-serif"}}>Referral Earnings</h1><p style={{color:'var(--text-3)',fontSize:14}}>Share your link \u2014 earn {isPrem?'\u20a61,000':'\u20a6500'} for every person who registers.</p></div>
             <div className="card" style={{marginBottom:20}}>
               <label style={{fontSize:12,fontWeight:700,color:'var(--text-2)',display:'block',marginBottom:8}}>Your Referral Link</label>
               <div style={{display:'flex',gap:10}}><input readOnly type="text" className="input" value={refLink} style={{fontWeight:600,fontSize:13,color:'var(--green)'}}/><button className="btn btn-primary btn-sm" style={{flexShrink:0}} onClick={()=>{navigator.clipboard?.writeText(refLink);toast.success('Link Copied!','Share it and earn when friends register.');}}>Copy</button></div>
             </div>
             <div className="stats-row" style={{display:'flex',gap:16,flexWrap:'wrap',marginBottom:20}}>
-              <StatCard label="Total Referrals" value={`${liveRefs} users`} icon="👥" accent="blue"/>
-              <StatCard label="Referral Earnings" value={naira(liveEarn)} icon="💰" accent="gold"/>
-              <StatCard label="Per Referral" value={isPrem?'₦1,000':'₦500'} icon="🎯" accent="green"/>
+              <StatCard label="Total Referrals" value={`${liveRefs} users`} icon="\U0001f465" accent="blue"/>
+              <StatCard label="Referral Earnings" value={naira(liveEarn)} icon="\U0001f4b0" accent="gold"/>
+              <StatCard label="Per Referral" value={isPrem?'\u20a61,000':'\u20a6500'} icon="\U0001f3af" accent="green"/>
             </div>
             <div className="card" style={{background:'var(--purple-light)',border:'1px solid #c4b5fd'}}>
               <h4 style={{fontWeight:800,fontSize:14,marginBottom:10,color:'var(--purple)'}}>How it works</h4>
@@ -875,14 +818,13 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
               ))}
             </div>
           </div>)}
-
           {page==='history'&&(<div className="fade-in">
             <div style={{marginBottom:28}}><h1 style={{fontSize:24,fontWeight:900,marginBottom:4,fontFamily:"'Sora',sans-serif"}}>Transaction History</h1><p style={{color:'var(--text-3)',fontSize:14}}>All credits and debits on your account.</p></div>
             <div style={{display:'flex',flexDirection:'column',gap:10}}>
               {histLog.map((log,i)=>(
                 <div key={i} className="card" style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 18px'}}>
                   <div style={{display:'flex',alignItems:'center',gap:12}}>
-                    <div style={{width:36,height:36,borderRadius:10,background:log.type==='credit'?'var(--green-light)':'var(--red-light)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16}}>{log.type==='credit'?'↓':'↑'}</div>
+                    <div style={{width:36,height:36,borderRadius:10,background:log.type==='credit'?'var(--green-light)':'var(--red-light)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16}}>{log.type==='credit'?'\u2193':'\u2191'}</div>
                     <div><div style={{fontWeight:700,fontSize:14}}>{log.label}</div><div style={{color:'var(--text-3)',fontSize:11,marginTop:2}}>{log.timestamp}</div></div>
                   </div>
                   <span style={{fontWeight:900,fontSize:16,color:log.type==='credit'?'var(--green)':'var(--red)'}}>{log.type==='credit'?'+':'-'}{naira(log.amount)}</span>
@@ -896,124 +838,90 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
   );
 }
 
+// ── ADMIN DASHBOARD ────────────────────────────────────────────────────────
 function AdminDashboard({onLogout,userManagementRows,setUserManagementRows}){
   const [page,setPage]=useState('overview');
   const [taskForm,setTaskForm]=useState({type:'video',title:'',url:'',reward:'',plan:'both'});
   const [taskSaved,setTaskSaved]=useState(false);
   const [confirm,setConfirm]=useState({open:false});
+  const [globalTasksList,setGlobalTasksList]=useState(()=>store.get(SK.TASKS)||[]);
+  const [withdrawalsList,setWithdrawalsList]=useState([]);
 
-  const [globalTasksList, setGlobalTasksList] = useState(() => store.get(SK.TASKS) || []);
-  const [withdrawalsList, setWithdrawalsList] = useState([]);
-
-  useEffect(() => {
-    const fetchTasks = async () => {
-      try {
-        const { data, error } = await adminDb.from('tasks').select('*').order('id', { ascending: true });
-        if (!error && data) { setGlobalTasksList(data); store.set(SK.TASKS, data); }
-      } catch(e) {}
+  useEffect(()=>{
+    const fetchTasks=async()=>{
+      try{const {data,error}=await adminDb.from('tasks').select('*').order('id',{ascending:true});if(!error&&data){setGlobalTasksList(data);store.set(SK.TASKS,data);}}catch(e){}
     };
     fetchTasks();
-    const ch = adminDb.channel('admin-tasks-rt')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => fetchTasks())
-      .subscribe();
-    return () => adminDb.removeChannel(ch);
-  }, []);
+    const ch=adminDb.channel('admin-tasks-rt').on('postgres_changes',{event:'*',schema:'public',table:'tasks'},()=>fetchTasks()).subscribe();
+    return()=>adminDb.removeChannel(ch);
+  },[]);
 
-  useEffect(() => {
-    const fetchWD = async () => {
-      try {
-        const { data, error } = await adminDb.from('withdrawals').select('*').order('id', { ascending: false });
-        if (!error && data) setWithdrawalsList(data.map(mapWD));
-      } catch(e) { console.error('fetchWD:', e); }
+  useEffect(()=>{
+    const fetchWD=async()=>{
+      try{const {data,error}=await adminDb.from('withdrawals').select('*').order('id',{ascending:false});if(!error&&data)setWithdrawalsList(data.map(mapWD));}catch(e){console.error('fetchWD:',e);}
     };
     fetchWD();
-    const ch = adminDb.channel('admin-withdrawals-rt')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'withdrawals' }, () => fetchWD())
-      .subscribe((status) => { if (status === 'SUBSCRIBED') fetchWD(); });
-    return () => adminDb.removeChannel(ch);
-  }, []);
+    const ch=adminDb.channel('admin-withdrawals-rt').on('postgres_changes',{event:'*',schema:'public',table:'withdrawals'},()=>fetchWD()).subscribe((status)=>{if(status==='SUBSCRIBED')fetchWD();});
+    return()=>adminDb.removeChannel(ch);
+  },[]);
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const { data, error } = await adminDb.from('profiles').select('*').order('id', { ascending: false });
-        if (!error && data) {
-          setUserManagementRows(data.map(p => ({
-            id: p.id, name: p.name || 'Unknown', email: p.email || '',
-            plan: p.plan || 'basic', balance: p.balance || 0,
-            joined: p.joined || '—', tasks: 0, refs: p.total_referrals || 0,
-            status: p.status || 'active'
-          })));
-        }
-      } catch(e) { console.error('fetchUsers:', e); }
+  useEffect(()=>{
+    const fetchUsers=async()=>{
+      try{
+        const {data,error}=await adminDb.from('profiles').select('*').order('id',{ascending:false});
+        if(!error&&data){setUserManagementRows(data.map(p=>({id:p.id,name:p.name||'Unknown',email:p.email||'',plan:p.plan||'basic',balance:p.balance||0,joined:p.joined||'\u2014',tasks:0,refs:p.total_referrals||0,status:p.status||'active'})));}
+      }catch(e){console.error('fetchUsers:',e);}
     };
     fetchUsers();
-    const ch = adminDb.channel('admin-profiles-rt')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => fetchUsers())
-      .subscribe();
-    return () => adminDb.removeChannel(ch);
-  }, []);
+    const ch=adminDb.channel('admin-profiles-rt').on('postgres_changes',{event:'*',schema:'public',table:'profiles'},()=>fetchUsers()).subscribe();
+    return()=>adminDb.removeChannel(ch);
+  },[]);
 
-  const pending = withdrawalsList.filter(w => w.status === 'pending');
-  const totalPaid = withdrawalsList.filter(w => w.status === 'approved').reduce((s, w) => s + w.amount, 0);
+  const pending=withdrawalsList.filter(w=>w.status==='pending');
+  const totalPaid=withdrawalsList.filter(w=>w.status==='approved').reduce((s,w)=>s+w.amount,0);
+  const exportUsersXLS=()=>{if(!userManagementRows.length){toast.warning('No Data','No users to export.');return;}exportXLS(userManagementRows.map((u,i)=>({'S/N':i+1,'Full Name':u.name,'Email':u.email,'Plan':u.plan.toUpperCase(),'Balance (NGN)':u.balance,'Referrals':u.refs,'Status':u.status,'Date Joined':u.joined})),'9jaWatchers_Users','Users');};
+  const exportUsersPDF=()=>{if(!userManagementRows.length){toast.warning('No Data','No users to export.');return;}exportPDF(['S/N','Full Name','Email','Plan','Balance (\u20a6)','Refs','Status','Joined'],userManagementRows.map((u,i)=>[i+1,u.name,u.email,u.plan.toUpperCase(),`\u20a6${Number(u.balance).toLocaleString()}`,u.refs,u.status,u.joined]),'9jaWatchers_Users','9jaWatchers \u2014 Registered Users Report');};
+  const exportWDXLS=()=>{if(!withdrawalsList.length){toast.warning('No Data','No withdrawals to export.');return;}exportXLS(withdrawalsList.slice().reverse().map((w,i)=>({'S/N':i+1,'Date':w.date,'Name':w.user,'Email':w.email,'Plan':w.plan,'Bank':w.bank,'Account':w.account,'Account Name':w.accountName,'Amount (NGN)':w.amount,'Status':w.status})),'9jaWatchers_Withdrawals','Withdrawals');};
+  const exportWDPDF=()=>{if(!withdrawalsList.length){toast.warning('No Data','No withdrawals to export.');return;}exportPDF(['S/N','Date','Name','Email','Plan','Bank','Account','Amount (\u20a6)','Status'],withdrawalsList.slice().reverse().map((w,i)=>[i+1,w.date,w.user,w.email,w.plan,w.bank,w.account,`\u20a6${Number(w.amount).toLocaleString()}`,w.status]),'9jaWatchers_Withdrawals','9jaWatchers \u2014 Withdrawal Requests Report');};
 
-  const exportUsersXLS=()=>{
-    if(!userManagementRows.length){toast.warning('No Data','No users to export.');return;}
-    exportXLS(userManagementRows.map((u,i)=>({'S/N':i+1,'Full Name':u.name,'Email':u.email,'Plan':u.plan.toUpperCase(),'Balance (NGN)':u.balance,'Referrals':u.refs,'Status':u.status,'Date Joined':u.joined})),'9jaWatchers_Users','Users');
+  const approve=async(id)=>{
+    const {error}=await adminDb.from('withdrawals').update({status:'approved'}).eq('id',id);
+    if(error){toast.error('Update Failed',error.message);return;}
+    setWithdrawalsList(p=>p.map(w=>w.id===id?{...w,status:'approved'}:w));
+    toast.success('Approved','Payout approved.');
   };
-  const exportUsersPDF=()=>{
-    if(!userManagementRows.length){toast.warning('No Data','No users to export.');return;}
-    exportPDF(['S/N','Full Name','Email','Plan','Balance (₦)','Refs','Status','Joined'],userManagementRows.map((u,i)=>[i+1,u.name,u.email,u.plan.toUpperCase(),`₦${Number(u.balance).toLocaleString()}`,u.refs,u.status,u.joined]),'9jaWatchers_Users','9jaWatchers — Registered Users Report');
+  const reject=async(id)=>{
+    const {error}=await adminDb.from('withdrawals').update({status:'rejected'}).eq('id',id);
+    if(error){toast.error('Update Failed',error.message);return;}
+    setWithdrawalsList(p=>p.map(w=>w.id===id?{...w,status:'rejected'}:w));
+    toast.warning('Rejected','Request declined.');
   };
-  const exportWDXLS=()=>{
-    if(!withdrawalsList.length){toast.warning('No Data','No withdrawals to export.');return;}
-    exportXLS(withdrawalsList.slice().reverse().map((w,i)=>({'S/N':i+1,'Date':w.date,'Name':w.user,'Email':w.email,'Plan':w.plan,'Bank':w.bank,'Account':w.account,'Account Name':w.accountName,'Amount (NGN)':w.amount,'Status':w.status})),'9jaWatchers_Withdrawals','Withdrawals');
+  const removeTask=id=>{
+    setGlobalTasksList(p=>{const u=p.filter(t=>t.id!==id);store.set(SK.TASKS,u);return u;});
+    adminDb.from('tasks').delete().eq('id',id);
+    toast.info('Task Removed','Removed from platform.');
   };
-  const exportWDPDF=()=>{
-    if(!withdrawalsList.length){toast.warning('No Data','No withdrawals to export.');return;}
-    exportPDF(['S/N','Date','Name','Email','Plan','Bank','Account','Amount (₦)','Status'],withdrawalsList.slice().reverse().map((w,i)=>[i+1,w.date,w.user,w.email,w.plan,w.bank,w.account,`₦${Number(w.amount).toLocaleString()}`,w.status]),'9jaWatchers_Withdrawals','9jaWatchers — Withdrawal Requests Report');
+  const toggleSuspend=(id,cur)=>{
+    const ns=cur==='active'?'suspended':'active';
+    setUserManagementRows(p=>p.map(u=>u.id===id?{...u,status:ns}:u));
+    adminDb.from('profiles').update({status:ns}).eq('id',id);
+    toast.info(cur==='active'?'User Suspended':'User Unsuspended','');
   };
-
-  const approve = async (id) => {
-    const { error } = await adminDb.from('withdrawals').update({ status: 'approved' }).eq('id', id);
-    if (error) { toast.error('Update Failed', error.message); return; }
-    setWithdrawalsList(p => p.map(w => w.id === id ? { ...w, status: 'approved' } : w));
-    toast.success('Approved', 'Payout approved.');
-  };
-  const reject = async (id) => {
-    const { error } = await adminDb.from('withdrawals').update({ status: 'rejected' }).eq('id', id);
-    if (error) { toast.error('Update Failed', error.message); return; }
-    setWithdrawalsList(p => p.map(w => w.id === id ? { ...w, status: 'rejected' } : w));
-    toast.warning('Rejected', 'Request declined.');
-  };
-  const removeTask = id => {
-    setGlobalTasksList(p => { const u = p.filter(t => t.id !== id); store.set(SK.TASKS, u); return u; });
-    adminDb.from('tasks').delete().eq('id', id);
-    toast.info('Task Removed', 'Removed from platform.');
-  };
-  const toggleSuspend = (id, cur) => {
-    const ns = cur === 'active' ? 'suspended' : 'active';
-    setUserManagementRows(p => p.map(u => u.id === id ? { ...u, status: ns } : u));
-    adminDb.from('profiles').update({ status: ns }).eq('id', id);
-    toast.info(cur === 'active' ? 'User Suspended' : 'User Unsuspended', '');
-  };
-  const submitTask = e => {
+  const submitTask=e=>{
     e.preventDefault();
-    if (!taskForm.title || !taskForm.url || !taskForm.reward) return;
-    const t = { type: taskForm.type, title: taskForm.title, url: taskForm.url, reward: Number(taskForm.reward), plan: taskForm.plan };
-    adminDb.from('tasks').insert([t]).then(({ error }) => {
-      if (error) toast.error('Sync Error', error.message);
-    });
-    setTaskForm({ type: 'video', title: '', url: '', reward: '', plan: 'both' });
-    setTaskSaved(true); setTimeout(() => setTaskSaved(false), 3000);
-    toast.success('Task Published!', `"${t.title.substring(0, 40)}" is now live.`);
+    if(!taskForm.title||!taskForm.url||!taskForm.reward)return;
+    const t={type:taskForm.type,title:taskForm.title,url:taskForm.url,reward:Number(taskForm.reward),plan:taskForm.plan};
+    adminDb.from('tasks').insert([t]).then(({error})=>{if(error)toast.error('Sync Error',error.message);});
+    setTaskForm({type:'video',title:'',url:'',reward:'',plan:'both'});
+    setTaskSaved(true);setTimeout(()=>setTaskSaved(false),3000);
+    toast.success('Task Published!',`"${t.title.substring(0,40)}" is now live.`);
   };
 
   const adminNav=[
-    {id:'overview',icon:'📊',label:'Overview'},
-    {id:'tasks',icon:'📋',label:'Task Manager'},
-    {id:'withdrawals',icon:'💳',label:'Withdrawals'},
-    {id:'users',icon:'👥',label:'Users'},
+    {id:'overview',icon:'\U0001f4ca',label:'Overview'},
+    {id:'tasks',icon:'\U0001f4cb',label:'Task Manager'},
+    {id:'withdrawals',icon:'\U0001f4b3',label:'Withdrawals'},
+    {id:'users',icon:'\U0001f465',label:'Users'},
   ];
 
   return(
@@ -1022,14 +930,13 @@ function AdminDashboard({onLogout,userManagementRows,setUserManagementRows}){
       <Sidebar items={adminNav} active={page} setPage={setPage} plan="admin" onLogout={onLogout} pendingCount={pending.length} currentUser={{name:'Administrator'}} balance={0}/>
       <div className="main-scroll">
         <div className="main-content" style={{padding:'32px 36px',maxWidth:960,margin:'0 auto'}}>
-
           {page==='overview'&&(<div className="fade-in">
-            <div style={{marginBottom:28}}><h1 style={{fontSize:26,fontWeight:900,marginBottom:4,fontFamily:"'Sora',sans-serif"}}>Admin Dashboard 🛠️</h1><p style={{color:'var(--text-3)',fontSize:14}}>Platform health and key metrics at a glance.</p></div>
+            <div style={{marginBottom:28}}><h1 style={{fontSize:26,fontWeight:900,marginBottom:4,fontFamily:"'Sora',sans-serif"}}>Admin Dashboard \U0001f6e0\ufe0f</h1><p style={{color:'var(--text-3)',fontSize:14}}>Platform health and key metrics at a glance.</p></div>
             <div className="stats-row" style={{display:'flex',gap:16,marginBottom:28,flexWrap:'wrap'}}>
-              <StatCard label="Total Members" value={userManagementRows.length} icon="👥" accent="blue"/>
-              <StatCard label="Pending Withdrawals" value={pending.length} icon="⏳" accent="gold"/>
-              <StatCard label="Total Paid Out" value={naira(totalPaid)} icon="🏦" accent="green"/>
-              <StatCard label="Active Tasks" value={globalTasksList.length} icon="⚡" accent="purple"/>
+              <StatCard label="Total Members" value={userManagementRows.length} icon="\U0001f465" accent="blue"/>
+              <StatCard label="Pending Withdrawals" value={pending.length} icon="\u23f3" accent="gold"/>
+              <StatCard label="Total Paid Out" value={naira(totalPaid)} icon="\U0001f3e6" accent="green"/>
+              <StatCard label="Active Tasks" value={globalTasksList.length} icon="\u26a1" accent="purple"/>
             </div>
             <div className="card" style={{marginBottom:20}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
@@ -1043,15 +950,15 @@ function AdminDashboard({onLogout,userManagementRows,setUserManagementRows}){
                   <div style={{display:'flex',gap:8,alignItems:'center'}}><Badge color={u.plan==='basic'?'green':'purple'}>{u.plan}</Badge><span style={{fontSize:12,color:'var(--text-3)'}}>{u.joined}</span></div>
                 </div>
               ))}
-              {userManagementRows.length>5&&<div style={{marginTop:12,textAlign:'center'}}><button className="btn btn-ghost btn-sm" onClick={()=>setPage('users')}>View all {userManagementRows.length} users →</button></div>}
+              {userManagementRows.length>5&&<div style={{marginTop:12,textAlign:'center'}}><button className="btn btn-ghost btn-sm" onClick={()=>setPage('users')}>View all {userManagementRows.length} users \u2192</button></div>}
             </div>
             {pending.length>0&&(
               <div className="card">
-                <h3 style={{fontWeight:800,fontSize:15,marginBottom:16}}>⚠️ Pending Withdrawals ({pending.length})</h3>
+                <h3 style={{fontWeight:800,fontSize:15,marginBottom:16}}>\u26a0\ufe0f Pending Withdrawals ({pending.length})</h3>
                 <div style={{display:'flex',flexDirection:'column',gap:14}}>
                   {pending.map(w=>(
                     <div key={w.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',paddingBottom:14,borderBottom:'1px solid var(--border)',flexWrap:'wrap',gap:12}}>
-                      <div><div style={{fontWeight:700}}>{w.user} <Badge color={w.plan==='basic'?'green':'purple'}>{w.plan}</Badge></div><div style={{fontSize:12,color:'var(--text-3)',marginTop:3}}>{w.bank} · {w.account} · {w.date}</div></div>
+                      <div><div style={{fontWeight:700}}>{w.user} <Badge color={w.plan==='basic'?'green':'purple'}>{w.plan}</Badge></div><div style={{fontSize:12,color:'var(--text-3)',marginTop:3}}>{w.bank} \u00b7 {w.account} \u00b7 {w.date}</div></div>
                       <div style={{display:'flex',alignItems:'center',gap:10}}><span style={{fontWeight:900,color:'var(--gold)',fontSize:16}}>{naira(w.amount)}</span><button className="btn btn-primary btn-sm" onClick={()=>approve(w.id)}>Approve</button><button className="btn btn-danger btn-sm" onClick={()=>reject(w.id)}>Reject</button></div>
                     </div>
                   ))}
@@ -1059,18 +966,17 @@ function AdminDashboard({onLogout,userManagementRows,setUserManagementRows}){
               </div>
             )}
           </div>)}
-
           {page==='tasks'&&(<div className="fade-in">
             <div style={{marginBottom:28}}><h1 style={{fontSize:24,fontWeight:900,marginBottom:4,fontFamily:"'Sora',sans-serif"}}>Task Manager</h1><p style={{color:'var(--text-3)',fontSize:14}}>Create and manage tasks shown to users.</p></div>
             <div className="admin-task-layout" style={{display:'flex',gap:28,alignItems:'flex-start',flexWrap:'wrap'}}>
               <form onSubmit={submitTask} className="card" style={{flex:1,minWidth:280}}>
                 <h3 style={{fontWeight:800,fontSize:15,marginBottom:16}}>Create New Task</h3>
-                {taskSaved&&<div style={{background:'var(--green-light)',border:'1px solid #86efac',color:'var(--green)',padding:'10px 12px',borderRadius:8,fontSize:13,marginBottom:14,fontWeight:700}}>✓ Task published successfully!</div>}
+                {taskSaved&&<div style={{background:'var(--green-light)',border:'1px solid #86efac',color:'var(--green)',padding:'10px 12px',borderRadius:8,fontSize:13,marginBottom:14,fontWeight:700}}>\u2713 Task published successfully!</div>}
                 <div style={{display:'flex',flexDirection:'column',gap:12}}>
                   <div><label style={{fontSize:12,fontWeight:700,color:'var(--text-2)',display:'block',marginBottom:4}}>Task Type</label><select className="input" value={taskForm.type} onChange={e=>setTaskForm(p=>({...p,type:e.target.value}))}><option value="video">Watch Video</option><option value="follow">Follow Account</option><option value="like">Like Post</option><option value="comment">Comment on Post</option></select></div>
                   <div><label style={{fontSize:12,fontWeight:700,color:'var(--text-2)',display:'block',marginBottom:4}}>Task Title</label><input required type="text" className="input" placeholder="e.g., Watch MTN 2026 Brand Video" value={taskForm.title} onChange={e=>setTaskForm(p=>({...p,title:e.target.value}))}/></div>
                   <div><label style={{fontSize:12,fontWeight:700,color:'var(--text-2)',display:'block',marginBottom:6}}>Destination URL</label><input required type="url" className="input" placeholder="https://..." value={taskForm.url} onChange={e=>setTaskForm(p=>({...p,url:e.target.value}))}/></div>
-                  <div><label style={{fontSize:12,fontWeight:700,color:'var(--text-2)',display:'block',marginBottom:4}}>Reward Amount (₦)</label><input required type="number" min={50} className="input" placeholder="e.g., 150" value={taskForm.reward} onChange={e=>setTaskForm(p=>({...p,reward:e.target.value}))}/></div>
+                  <div><label style={{fontSize:12,fontWeight:700,color:'var(--text-2)',display:'block',marginBottom:4}}>Reward Amount (\u20a6)</label><input required type="number" min={50} className="input" placeholder="e.g., 150" value={taskForm.reward} onChange={e=>setTaskForm(p=>({...p,reward:e.target.value}))}/></div>
                   <div><label style={{fontSize:12,fontWeight:700,color:'var(--text-2)',display:'block',marginBottom:4}}>Audience</label><select className="input" value={taskForm.plan} onChange={e=>setTaskForm(p=>({...p,plan:e.target.value}))}><option value="both">All Users</option><option value="basic">Basic Only</option><option value="premium">Premium Only</option></select></div>
                   <button className="btn btn-primary btn-full" type="submit" style={{marginTop:4}}>Publish Task</button>
                 </div>
@@ -1099,14 +1005,13 @@ function AdminDashboard({onLogout,userManagementRows,setUserManagementRows}){
               </div>
             </div>
           </div>)}
-
           {page==='withdrawals'&&(<div className="fade-in">
             <div style={{marginBottom:28,display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:12}}>
               <div>
                 <h1 style={{fontSize:24,fontWeight:900,marginBottom:4,fontFamily:"'Sora',sans-serif"}}>Withdrawal Requests</h1>
-                <div style={{display:'flex',alignItems:'center',gap:6,fontSize:13,color:'var(--text-3)'}}><span className="live-dot"/><span>Real-time — new requests appear instantly</span></div>
+                <div style={{display:'flex',alignItems:'center',gap:6,fontSize:13,color:'var(--text-3)'}}><span className="live-dot"/><span>Real-time \u2014 new requests appear instantly</span></div>
               </div>
-              <div className="export-btn-group" style={{display:'flex',gap:8}}><button className="btn btn-primary btn-sm" onClick={exportWDXLS}>📊 Export XLS</button><button className="btn btn-blue btn-sm" onClick={exportWDPDF}>📄 Export PDF</button></div>
+              <div className="export-btn-group" style={{display:'flex',gap:8}}><button className="btn btn-primary btn-sm" onClick={exportWDXLS}>\U0001f4ca Export XLS</button><button className="btn btn-blue btn-sm" onClick={exportWDPDF}>\U0001f4c4 Export PDF</button></div>
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:14}}>
               {withdrawalsList.length===0?(<div className="card" style={{textAlign:'center',padding:40,color:'var(--text-3)'}}>No withdrawal requests yet.</div>)
@@ -1114,7 +1019,7 @@ function AdminDashboard({onLogout,userManagementRows,setUserManagementRows}){
                 <div key={w.id} className="card" style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:14}}>
                   <div>
                     <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}><strong style={{fontSize:15}}>{w.user}</strong><Badge color={w.plan==='basic'?'green':'purple'}>{w.plan}</Badge></div>
-                    <div style={{fontSize:12,color:'var(--text-3)',marginBottom:2}}>{w.email||'—'}</div>
+                    <div style={{fontSize:12,color:'var(--text-3)',marginBottom:2}}>{w.email||'\u2014'}</div>
                     <div style={{fontSize:12,color:'var(--text-3)',marginBottom:2}}><strong>Bank:</strong> {w.bank} &nbsp;|&nbsp; <strong>Acct:</strong> {w.account} &nbsp;|&nbsp; <strong>Name:</strong> {w.accountName||w.user}</div>
                     <div style={{fontSize:11,color:'var(--text-3)'}}>{w.date}</div>
                   </div>
@@ -1127,23 +1032,22 @@ function AdminDashboard({onLogout,userManagementRows,setUserManagementRows}){
               ))}
             </div>
           </div>)}
-
           {page==='users'&&(<div className="fade-in">
             <div style={{marginBottom:28,display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:12}}>
               <div>
                 <h1 style={{fontSize:24,fontWeight:900,marginBottom:4,fontFamily:"'Sora',sans-serif"}}>User Management</h1>
-                <div style={{display:'flex',alignItems:'center',gap:8,marginTop:4}}><span style={{color:'var(--text-3)',fontSize:14}}>All registered users — pulled live from database.</span><div style={{display:'flex',alignItems:'center',gap:5,fontSize:12,color:'var(--green)',fontWeight:700}}><span className="live-dot"/>Live</div></div>
+                <div style={{display:'flex',alignItems:'center',gap:8,marginTop:4}}><span style={{color:'var(--text-3)',fontSize:14}}>All registered users \u2014 pulled live from database.</span><div style={{display:'flex',alignItems:'center',gap:5,fontSize:12,color:'var(--green)',fontWeight:700}}><span className="live-dot"/>Live</div></div>
               </div>
-              <div className="export-btn-group" style={{display:'flex',gap:8}}><button className="btn btn-primary btn-sm" onClick={exportUsersXLS}>📊 Export XLS</button><button className="btn btn-blue btn-sm" onClick={exportUsersPDF}>📄 Export PDF</button></div>
+              <div className="export-btn-group" style={{display:'flex',gap:8}}><button className="btn btn-primary btn-sm" onClick={exportUsersXLS}>\U0001f4ca Export XLS</button><button className="btn btn-blue btn-sm" onClick={exportUsersPDF}>\U0001f4c4 Export PDF</button></div>
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:10}}>
               {userManagementRows.length===0?(
-                <div className="card" style={{textAlign:'center',padding:40,color:'var(--text-3)'}}><div style={{fontSize:36,marginBottom:12}}>👥</div><h3 style={{fontWeight:800,fontSize:17,marginBottom:8}}>No Users Yet</h3><p style={{fontSize:14}}>New registrations will appear here in real time.</p></div>
+                <div className="card" style={{textAlign:'center',padding:40,color:'var(--text-3)'}}><div style={{fontSize:36,marginBottom:12}}>\U0001f465</div><h3 style={{fontWeight:800,fontSize:17,marginBottom:8}}>No Users Yet</h3><p style={{fontSize:14}}>New registrations will appear here in real time.</p></div>
               ):userManagementRows.map(u=>(
                 <div key={u.id} className="card" style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12,padding:'16px 20px'}}>
                   <div>
                     <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}><strong style={{fontSize:15}}>{u.name}</strong><Badge color={u.plan==='basic'?'green':'purple'}>{u.plan}</Badge><Badge color={u.status==='active'?'green':'red'}>{u.status}</Badge></div>
-                    <div style={{fontSize:12,color:'var(--text-3)'}}>{u.email} · Balance: <strong style={{color:'var(--gold)'}}>{naira(u.balance)}</strong> · Joined {u.joined}</div>
+                    <div style={{fontSize:12,color:'var(--text-3)'}}>{u.email} \u00b7 Balance: <strong style={{color:'var(--gold)'}}>{naira(u.balance)}</strong> \u00b7 Joined {u.joined}</div>
                   </div>
                   <button className={`btn btn-sm ${u.status==='active'?'btn-danger':'btn-primary'}`} onClick={()=>setConfirm({open:true,title:u.status==='active'?'Suspend User':'Unsuspend User',message:`${u.status==='active'?'Suspend':'Reinstate'} ${u.name}?`,confirmLabel:u.status==='active'?'Suspend':'Unsuspend',variant:u.status==='active'?'danger':'primary',onConfirm:()=>{toggleSuspend(u.id,u.status);setConfirm({open:false});}})}>
                     {u.status==='active'?'Suspend':'Unsuspend'}
@@ -1152,13 +1056,13 @@ function AdminDashboard({onLogout,userManagementRows,setUserManagementRows}){
               ))}
             </div>
           </div>)}
-
         </div>
       </div>
     </div>
   );
 }
 
+// ── APP ROOT ────────────────────────────────────────────────────────────────
 function App(){
   const [screen,setScreen]=useState('landing');
   const [planOverride,setPlanOverride]=useState(null);
@@ -1191,22 +1095,22 @@ function App(){
       }
     };
     init();
-    const { data: { subscription } } = db.auth.onAuthStateChange(async(event, session) => {
-      if (event === 'INITIAL_SESSION' && session) {
-        const stored = store.get(SK.SESSION);
-        if (stored && stored.role !== 'admin' && stored.user) {
-          try {
-            const { data } = await db.from('profiles').select('balance,tasks_state').eq('id', stored.user.id).single();
-            if (data) {
-              if (data.balance !== undefined) setUserBalance(data.balance);
-              if (data.tasks_state) { const n = {}; Object.keys(data.tasks_state).forEach(k => { n[String(k)] = data.tasks_state[k]; }); setGlobalUserTasksState(n); }
+    const {data:{subscription}}=db.auth.onAuthStateChange(async(event,session)=>{
+      if(event==='INITIAL_SESSION'&&session){
+        const stored=store.get(SK.SESSION);
+        if(stored&&stored.role!=='admin'&&stored.user){
+          try{
+            const {data}=await db.from('profiles').select('balance,tasks_state').eq('id',stored.user.id).single();
+            if(data){
+              if(data.balance!==undefined)setUserBalance(data.balance);
+              if(data.tasks_state){const n={};Object.keys(data.tasks_state).forEach(k=>{n[String(k)]=data.tasks_state[k];});setGlobalUserTasksState(n);}
             }
-          } catch(e) {}
+          }catch(e){}
         }
       }
-      if (event === 'SIGNED_OUT') { store.set(SK.SESSION, null); setScreen('landing'); setRoleContext(null); setCurrentUser(null); }
+      if(event==='SIGNED_OUT'){store.set(SK.SESSION,null);setScreen('landing');setRoleContext(null);setCurrentUser(null);}
     });
-    return () => subscription.unsubscribe();
+    return()=>subscription.unsubscribe();
   },[]);
 
   useEffect(()=>{
@@ -1270,74 +1174,43 @@ function App(){
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
 
-<!-- ═══ Sweet Effects Engine — runs after React mounts ══════════════════ -->
+<!-- Sweet Effects Engine -->
 <script>
 (function(){
   var PHRASES=["For Every Click You Make","Watching Nigerian Brands","With Just Your Smartphone","Paid Daily To Your Bank","By Engaging Top Brands"];
   var pi=0,ci=0,deleting=false,lastTs=0,pauseActive=false,pauseTimer=null;
   var TY=65,TD=38,PAUSE=2350;
-
   function getEl(){return document.getElementById('tw-target');}
-
   function tick(){
     var e=getEl();if(!e)return;
     var ph=PHRASES[pi];
-    if(!deleting){
-      ci++;e.textContent=ph.slice(0,ci);
-      if(ci>=ph.length){pauseActive=true;clearTimeout(pauseTimer);pauseTimer=setTimeout(function(){pauseActive=false;deleting=true;},PAUSE);return;}
-    } else {
-      ci--;e.textContent=ph.slice(0,ci);
-      if(ci<=0){deleting=false;pi=(pi+1)%PHRASES.length;ci=0;}
-    }
+    if(!deleting){ci++;e.textContent=ph.slice(0,ci);if(ci>=ph.length){pauseActive=true;clearTimeout(pauseTimer);pauseTimer=setTimeout(function(){pauseActive=false;deleting=true;},PAUSE);return;}}
+    else{ci--;e.textContent=ph.slice(0,ci);if(ci<=0){deleting=false;pi=(pi+1)%PHRASES.length;ci=0;}}
   }
-
-  function loop(ts){
-    if(!pauseActive){var sp=deleting?TD:TY;if(ts-lastTs>sp){tick();lastTs=ts;}}
-    requestAnimationFrame(loop);
-  }
-
+  function loop(ts){if(!pauseActive){var sp=deleting?TD:TY;if(ts-lastTs>sp){tick();lastTs=ts;}}requestAnimationFrame(loop);}
   function addSparkles(hero){
     var d=document.createElement('div');d.className='hero-sparks';
     var cols=['rgba(22,163,74,0.5)','rgba(22,163,74,0.28)','rgba(245,158,11,0.45)','rgba(245,158,11,0.22)','rgba(124,58,237,0.32)','rgba(16,185,129,0.38)'];
-    for(var i=0;i<24;i++){
-      var s=document.createElement('div');s.className='spark';
-      var sz=(Math.random()*5+2.5).toFixed(1);
-      var c=cols[Math.floor(Math.random()*cols.length)];
-      s.style.cssText='left:'+Math.round(Math.random()*100)+'%;top:'+Math.round(38+Math.random()*55)+'%;width:'+sz+'px;height:'+sz+'px;background:radial-gradient(circle,'+c+',transparent);animation-duration:'+(3.5+Math.random()*5).toFixed(2)+'s;animation-delay:'+(Math.random()*7).toFixed(2)+'s;';
-      d.appendChild(s);
-    }
+    for(var i=0;i<24;i++){var s=document.createElement('div');s.className='spark';var sz=(Math.random()*5+2.5).toFixed(1);var c=cols[Math.floor(Math.random()*cols.length)];s.style.cssText='left:'+Math.round(Math.random()*100)+'%;top:'+Math.round(38+Math.random()*55)+'%;width:'+sz+'px;height:'+sz+'px;background:radial-gradient(circle,'+c+',transparent);animation-duration:'+(3.5+Math.random()*5).toFixed(2)+'s;animation-delay:'+(Math.random()*7).toFixed(2)+'s;';d.appendChild(s);}
     hero.insertBefore(d,hero.firstChild);
   }
-
   function wrapLogos(){
     document.querySelectorAll('.logo-mark').forEach(function(lm){
       if(lm.parentElement&&lm.parentElement.classList.contains('logo-mark-wrap'))return;
-      var w=document.createElement('div');w.className='logo-mark-wrap';
-      lm.parentNode.insertBefore(w,lm);w.appendChild(lm);
+      var w=document.createElement('div');w.className='logo-mark-wrap';lm.parentNode.insertBefore(w,lm);w.appendChild(lm);
       var r=document.createElement('div');r.className='logo-pulse-ring';w.appendChild(r);
     });
   }
-
   function scrollReveal(){
-    var ro=new IntersectionObserver(function(entries){
-      entries.forEach(function(e,idx){if(e.isIntersecting){setTimeout(function(){e.target.classList.add('vis');},idx*72);ro.unobserve(e.target);}});
-    },{threshold:0.1});
+    var ro=new IntersectionObserver(function(entries){entries.forEach(function(e,idx){if(e.isIntersecting){setTimeout(function(){e.target.classList.add('vis');},idx*72);ro.unobserve(e.target);}});},{threshold:0.1});
     document.querySelectorAll('.plan-card,.stat-card').forEach(function(el){el.classList.add('reveal-up');ro.observe(el);});
   }
-
-  function statFloat(){
-    var c=document.querySelector('.hero-content');if(!c)return;
-    var r=c.querySelector('div[style*="gap:32"]');if(!r)return;
-    r.querySelectorAll(':scope > div').forEach(function(el){el.classList.add('hero-stat-float');});
-  }
-
+  function statFloat(){var c=document.querySelector('.hero-content');if(!c)return;var r=c.querySelector('div[style*="gap:32"]');if(!r)return;r.querySelectorAll(':scope > div').forEach(function(el){el.classList.add('hero-stat-float');});}
   function taskAnim(){
     var seen=new WeakSet();
     function run(){document.querySelectorAll('.task-card:not(.tc-anim)').forEach(function(el,i){if(seen.has(el))return;seen.add(el);el.classList.add('tc-anim');el.style.animationDelay=(i*0.056).toFixed(3)+'s';});}
-    run();
-    new MutationObserver(run).observe(document.body,{childList:true,subtree:true});
+    run();new MutationObserver(run).observe(document.body,{childList:true,subtree:true});
   }
-
   function init(){
     if(!getEl()){setTimeout(init,120);return;}
     wrapLogos();
@@ -1347,7 +1220,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
     var hs=document.querySelector('.hero-section');if(hs)addSparkles(hs);
     requestAnimationFrame(loop);
   }
-
   if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',init);}
   else{setTimeout(init,80);}
 })();
