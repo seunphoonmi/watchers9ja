@@ -502,42 +502,105 @@ function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterN
         key:'pk_test_59b624a7a9d7733af6f2e5407ec0c6ee2cea1428',
         email,amount:amt,currency:'NGN',
         metadata:{custom_fields:[{display_name:'Full Name',variable_name:'customer_name',value:form.name},{display_name:'Plan',variable_name:'plan',value:selPlan}]},
-        onSuccess:async(tx)=>{
-          toast.info('Payment Received',`Ref: ${tx.reference} — Setting up account…`);
-          setBusy(true);
-          try{
-            const {data:authData,error:authErr}=await db.auth.signUp({email:form.email.toLowerCase().trim(),password:form.password});
-            if(authErr)throw authErr;
-            const bal=selPlan==='premium'?1000:500;
-            const profile={id:authData.user.id,name:form.name,email:form.email.toLowerCase().trim(),plan:selPlan,balance:bal,paid:true,status:'active',joined:new Date().toLocaleDateString('en-NG',{day:'2-digit',month:'short',year:'numeric'}),total_referrals:0,referral_earnings:0};
-            const {error:pErr}=await db.from('profiles').insert([profile]);
-            if(pErr)throw pErr;
-            const ref=localStorage.getItem('9ja_active_ref_code');
-            if(ref){
-              const snip=ref.split('-').pop();
-              const {data:all}=await adminDb.from('profiles').select('*');
-              if(all){
-                const parent=all.find(p=>p.id&&p.id.toString().slice(-4)===snip);
-                if(parent){
-                  const comm=parent.plan==='premium'?1000:500;
-                  await adminDb.from('profiles').update({balance:(parent.balance||0)+comm,total_referrals:(parent.total_referrals||0)+1,referral_earnings:(parent.referral_earnings||0)+comm}).eq('id',parent.id);
-                  localStorage.removeItem('9ja_active_ref_code');
-                }
-              }
-            }
-            store.set(SK.UP(form.email),profile);
-            if(onRegisterNewUser)onRegisterNewUser({id:profile.id,name:profile.name,email:profile.email,plan:profile.plan,balance:profile.balance,joined:profile.joined,tasks:0,refs:0,status:'active'});
-            toast.success('Welcome to 9jaWatchers! 🎉',`Account live, ${form.name.split(' ')[0]}!`);
-            onLoginSuccess(selPlan,profile);
-          }catch(err){toast.error('Setup Failed',`Payment ok but setup failed: ${err.message}`);}
-          finally{setBusy(false);}
-        },
-        onCancel:()=>toast.warning('Payment Cancelled','Not completed.'),
-        onError:err=>toast.error('Payment Error',err.message||'Something went wrong.')
-      });
-    }catch(err){toast.error('Gateway Error','Unable to connect to Paystack.');}
-  };
+       onSuccess: async (tx) => {
+  toast.info('Payment Received', `Ref: ${tx.reference} — Setting up account…`);
+  setBusy(true);
+  try {
+    // Wait 2s to clear Supabase auth rate limit window
+    await new Promise(r => setTimeout(r, 2000));
 
+    let authData, authErr;
+    // Retry up to 3 times with 5s gap (handles Supabase "12 second" rate limit)
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      ({ data: authData, error: authErr } = await db.auth.signUp({
+        email: form.email.toLowerCase().trim(),
+        password: form.password
+      }));
+      if (!authErr) break;
+      if (authErr.message?.includes('security') || authErr.message?.includes('seconds')) {
+        if (attempt < 3) {
+          toast.info('Almost There…', `Setting up your account (attempt ${attempt + 1}/3)…`);
+          await new Promise(r => setTimeout(r, 6000));
+        }
+      } else {
+        break; // Non-rate-limit error — don't retry
+      }
+    }
+    if (authErr) throw authErr;
+
+    const bal = selPlan === 'premium' ? 1000 : 500;
+    const profile = {
+      id: authData.user.id,
+      name: form.name,
+      email: form.email.toLowerCase().trim(),
+      plan: selPlan,
+      balance: bal,
+      paid: true,
+      status: 'active',
+      joined: new Date().toLocaleDateString('en-NG', {day:'2-digit', month:'short', year:'numeric'}),
+      total_referrals: 0,
+      referral_earnings: 0
+    };
+    const { error: pErr } = await db.from('profiles').insert([profile]);
+    if (pErr) throw pErr;
+
+    // Referral handling (unchanged)
+   const ref = localStorage.getItem('9ja_active_ref_code');
+if (ref) {
+  try {
+    const snip = ref.split('-').pop();
+    console.log('[Referral] Looking for parent with ID ending in:', snip);
+
+    const { data: all, error: refErr } = await adminDb
+      .from('profiles')
+      .select('id,name,plan,balance,total_referrals,referral_earnings');
+
+    if (refErr) throw refErr;
+
+    const parent = all?.find(p => p.id && p.id.toString().slice(-4) === snip);
+    console.log('[Referral] Parent found:', parent ? `${parent.name} (${parent.id})` : 'NOT FOUND');
+
+    if (parent) {
+      const comm = parent.plan === 'premium' ? 1000 : 500;
+      const { error: updateErr } = await adminDb
+        .from('profiles')
+        .update({
+          balance: (parent.balance || 0) + comm,
+          total_referrals: (parent.total_referrals || 0) + 1,
+          referral_earnings: (parent.referral_earnings || 0) + comm
+        })
+        .eq('id', parent.id);
+
+      if (updateErr) throw updateErr;
+      console.log('[Referral] ✅ Commission ₦' + comm + ' credited to', parent.name);
+      localStorage.removeItem('9ja_active_ref_code');
+    } else {
+      console.warn('[Referral] ⚠️ No profile matched snip:', snip);
+    }
+  } catch (refErr) {
+    // Never block account creation because of referral failure
+    console.error('[Referral] ❌ Error:', refErr.message);
+  }
+}
+    store.set(SK.UP(form.email), profile);
+    if (onRegisterNewUser) onRegisterNewUser({
+      id: profile.id, name: profile.name, email: profile.email,
+      plan: profile.plan, balance: profile.balance,
+      joined: profile.joined, tasks: 0, refs: 0, status: 'active'
+    });
+    toast.success('Welcome to 9jaWatchers! 🎉', `Account live, ${form.name.split(' ')[0]}!`);
+    onLoginSuccess(selPlan, profile);
+
+  } catch (err) {
+    if (err.message?.includes('security') || err.message?.includes('seconds')) {
+      toast.error('Rate Limited', 'Payment received! Wait 15 seconds then click Activate again to complete setup.');
+    } else {
+      toast.error('Setup Failed', `Payment received but setup failed: ${err.message}`);
+    }
+  } finally {
+    setBusy(false);
+  }
+},
   return(
     <div style={{minHeight:'100vh',background:'var(--bg)',display:'flex',flexDirection:'column'}}>
       <div style={{padding:'16px 24px',borderBottom:'1px solid var(--border)',background:'var(--surface)'}}>
@@ -601,16 +664,36 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
   const tasksListRef = useRef(tasksList);
   useEffect(() => { tasksListRef.current = tasksList; }, [tasksList]);
 
-  useEffect(() => {
-    const fetchTasks = async () => {
-      try {
-        const { data, error } = await db.from('tasks').select('*').order('id', { ascending: true });
-        if (!error && data && data.length > 0) {
-          setTasksList(data);
-          store.set(SK.TASKS, data);
-        }
-      } catch(e) {}
-    };
+  // ── Live profile balance watcher — updates dashboard when referral bonus arrives ──
+useEffect(() => {
+  if (!currentUser?.id) return;
+
+  const ch = db.channel(`profile-balance-${currentUser.id}`)
+    .on('postgres_changes', {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'profiles',
+      filter: `id=eq.${currentUser.id}`
+    }, (payload) => {
+      if (!payload.new) return;
+      console.log('[Profile RT] Balance update received:', payload.new);
+
+      if (payload.new.balance !== undefined) {
+        setUserBalance(payload.new.balance);
+      }
+      if (payload.new.total_referrals !== undefined) {
+        setLiveRefs(payload.new.total_referrals);
+      }
+      if (payload.new.referral_earnings !== undefined) {
+        setLiveEarn(payload.new.referral_earnings);
+      }
+    })
+    .subscribe((status) => {
+      console.log('[Profile RT] Channel status:', status);
+    });
+
+  return () => db.removeChannel(ch);
+}, [currentUser?.id]);
     fetchTasks();
     const ch = db.channel('tasks-realtime-user')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => { fetchTasks(); })
