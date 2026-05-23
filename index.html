@@ -116,14 +116,10 @@
     .loader-wrap{display:flex;align-items:center;gap:10px;padding:40px;justify-content:center;color:var(--text-3);font-size:14px;}
 
     /* ═══════════════════════════════════════════════════════════════════════
-       SWEET EFFECTS LAYER — visual polish injected on top, non-breaking
+       SWEET EFFECTS LAYER
        ═══════════════════════════════════════════════════════════════════════ */
-
-    /* Typewriter blinking cursor */
     .tw-cursor{display:inline-block;width:3px;height:0.8em;background:linear-gradient(180deg,var(--green),#f59e0b);margin-left:4px;vertical-align:middle;border-radius:2px;animation:twBlink 0.72s step-end infinite;}
     @keyframes twBlink{0%,100%{opacity:1;}50%{opacity:0;}}
-
-    /* Animated shimmer on the gradient headline */
     .gradient-text{
       background-size:260% auto !important;
       background-image:linear-gradient(115deg,var(--green) 0%,#f59e0b 30%,#10b981 52%,#7c3aed 74%,var(--green) 100%) !important;
@@ -133,13 +129,9 @@
       -webkit-text-fill-color:transparent !important;
     }
     @keyframes shimmerText{0%{background-position:0% center;}100%{background-position:260% center;}}
-
-    /* Logo mark soft pulse ring */
     .logo-mark-wrap{position:relative;display:inline-flex;align-items:center;}
     .logo-pulse-ring{position:absolute;inset:-5px;border-radius:15px;border:2.5px solid rgba(22,163,74,0.36);animation:logoPulse 2.7s ease-in-out infinite;pointer-events:none;}
     @keyframes logoPulse{0%,100%{opacity:0.55;transform:scale(1);}50%{opacity:0;transform:scale(1.25);}}
-
-    /* Hero floating sparkle particles */
     .hero-sparks{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:1;}
     .spark{position:absolute;border-radius:50%;opacity:0;animation:sparkFloat linear infinite;}
     @keyframes sparkFloat{
@@ -148,48 +140,40 @@
       80%{opacity:0.55;}
       100%{opacity:0;transform:translateY(-175px) scale(1.45) rotate(200deg);}
     }
-
-    /* Hero pill gentle bounce */
     .hero-pill-anim{animation:pillBounce 3.6s ease-in-out infinite;}
     @keyframes pillBounce{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);}}
-
-    /* Hero stat items floating stagger */
     .hero-stat-float{animation:hStatFloat 4.2s ease-in-out infinite;}
     .hero-stat-float:nth-child(2){animation-delay:1.4s;}
     .hero-stat-float:nth-child(3){animation-delay:2.8s;}
     @keyframes hStatFloat{0%,100%{transform:translateY(0);}50%{transform:translateY(-7px);}}
-
-    /* Nav CTA glow ring pulse */
     .nav-cta-glow{animation:ctaGlow 2.9s ease-out infinite;}
     @keyframes ctaGlow{
       0%,100%{box-shadow:0 4px 14px rgba(22,163,74,0.28),0 0 0 0 rgba(22,163,74,0.3);}
       50%{box-shadow:0 4px 14px rgba(22,163,74,0.28),0 0 0 9px rgba(22,163,74,0);}
     }
-
-    /* Plan card enhanced hover lift */
     .plan-card{transition:transform 0.28s cubic-bezier(0.34,1.3,0.64,1),box-shadow 0.28s ease !important;}
     .plan-card:hover{transform:translateY(-8px) scale(1.013) !important;box-shadow:0 24px 56px rgba(22,163,74,0.13),0 4px 16px rgba(0,0,0,0.07) !important;}
     .plan-card.featured:hover{box-shadow:0 24px 56px rgba(124,58,237,0.17),0 4px 16px rgba(0,0,0,0.07) !important;}
-
-    /* Scroll reveal for plan/stat cards */
     .reveal-up{opacity:0;transform:translateY(28px);transition:opacity 0.52s ease,transform 0.52s cubic-bezier(0.34,1.1,0.64,1);}
     .reveal-up.vis{opacity:1;transform:none;}
-
-    /* Task card staggered entrance */
     .tc-anim{animation:tcSlide 0.38s cubic-bezier(0.34,1.2,0.64,1) both;}
     @keyframes tcSlide{from{opacity:0;transform:translateX(-12px) scale(0.98);}to{opacity:1;transform:none;}}
-
-    /* Stat card hover lift */
     .stat-card{transition:transform 0.2s ease,box-shadow 0.2s ease;}
     .stat-card:hover{transform:translateY(-3px);box-shadow:var(--shadow);}
-
-    /* Hero section background shimmer overlay */
     .hero-bg::after{
       content:'';position:absolute;inset:0;
       background:radial-gradient(ellipse 55% 40% at 50% 52%,rgba(22,163,74,0.045) 0%,transparent 70%);
       pointer-events:none;animation:bgBreath 6s ease-in-out infinite;
     }
     @keyframes bgBreath{0%,100%{opacity:0.6;}50%{opacity:1;}}
+
+    /* Referral credit flash animation */
+    @keyframes refCreditFlash{
+      0%{box-shadow:0 0 0 0 rgba(22,163,74,0.6);}
+      50%{box-shadow:0 0 0 12px rgba(22,163,74,0);}
+      100%{box-shadow:0 0 0 0 rgba(22,163,74,0);}
+    }
+    .ref-credit-flash{animation:refCreditFlash 0.8s ease-out 3;}
   </style>
 </head>
 <body>
@@ -264,28 +248,6 @@ const store={
   get:(k,fb=null)=>{ try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch{return fb;} },
   set:(k,v)=>{ try{localStorage.setItem(k,JSON.stringify(v));}catch{} }
 };
-const INIT_TASKS=[
-  {id:1,type:'video',title:'Watch GTBank 2026 Brand Video',url:'https://youtube.com',reward:150,plan:'both'},
-  {id:2,type:'video',title:'Watch Flutterwave Campaign Video',url:'https://youtube.com',reward:150,plan:'both'},
-  {id:3,type:'video',title:'Watch Dangote Foundation Advert',url:'https://youtube.com',reward:200,plan:'both'},
-  {id:4,type:'follow',title:'Follow @NigerianStartups on Instagram',url:'https://instagram.com',reward:100,plan:'both'},
-  {id:5,type:'follow',title:'Follow @TechPointNG on Twitter',url:'https://twitter.com',reward:100,plan:'both'},
-  {id:6,type:'like',title:'Like  New Feature Post',url:'https://twitter.com',reward:80,plan:'both'},
-  {id:7,type:'like',title:'Like Africa Fintech Festival Post',url:'https://instagram.com',reward:80,plan:'both'},
-  {id:8,type:'comment',title:'Comment on MTN Data Offer Post',url:'https://facebook.com',reward:120,plan:'both'},
-  {id:9,type:'video',title:'Watch Konga Flash Sale Ad',url:'https://youtube.com',reward:250,plan:'premium'},
-  {id:10,type:'video',title:'Watch Zenith Bank Digital Ad',url:'https://youtube.com',reward:250,plan:'premium'},
-  {id:11,type:'follow',title:'Follow @LagosTechHub on LinkedIn',url:'https://linkedin.com',reward:150,plan:'premium'},
-  {id:12,type:'follow',title:'Follow @NaijaTech on Instagram',url:'https://instagram.com',reward:150,plan:'premium'},
-  {id:13,type:'follow',title:'Follow @AfricanStartups on Twitter',url:'https://twitter.com',reward:150,plan:'premium'},
-  {id:14,type:'like',title:'Like Cowrywise Investment Tips Post',url:'https://twitter.com',reward:100,plan:'premium'},
-  {id:15,type:'like',title:'Like Carbon Financial Services Post',url:'https://instagram.com',reward:100,plan:'premium'},
-  {id:16,type:'comment',title:'Comment on Piggyvest Savings Post',url:'https://instagram.com',reward:200,plan:'premium'},
-  {id:17,type:'comment',title:'Comment on ChipperCash Promo',url:'https://facebook.com',reward:200,plan:'premium'},
-  {id:18,type:'video',title:'Watch Access Bank Youth Campaign',url:'https://youtube.com',reward:300,plan:'premium'},
-  {id:19,type:'follow',title:'Follow @StartupNation on Twitter',url:'https://twitter.com',reward:150,plan:'premium'},
-  {id:20,type:'like',title:'Like Andela Nigeria Careers Post',url:'https://linkedin.com',reward:120,plan:'premium'},
-];
 
 const mapWD = w => ({
   id: w.id,
@@ -328,10 +290,10 @@ function Badge({children,color='green'}){
   const c=m[color]||m.green;
   return <span className="badge" style={{background:c.bg,color:c.text,border:`1px solid ${c.border}`}}>{children}</span>;
 }
-function StatCard({label,value,icon,accent='green'}){
+function StatCard({label,value,icon,accent='green',flash=false}){
   const a={green:{bg:'var(--green-light)',text:'var(--green)'},gold:{bg:'var(--gold-light)',text:'var(--gold)'},blue:{bg:'var(--blue-light)',text:'var(--blue)'},purple:{bg:'var(--purple-light)',text:'var(--purple)'},red:{bg:'var(--red-light)',text:'var(--red)'}};
   const c=a[accent]||a.green;
-  return(<div className="stat-card"><div style={{width:40,height:40,borderRadius:10,background:c.bg,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,marginBottom:12}}>{icon}</div><div style={{fontSize:22,fontWeight:800,color:c.text,marginBottom:2}}>{value}</div><div style={{fontSize:12,color:'var(--text-3)',fontWeight:600}}>{label}</div></div>);
+  return(<div className={`stat-card${flash?' ref-credit-flash':''}`}><div style={{width:40,height:40,borderRadius:10,background:c.bg,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,marginBottom:12}}>{icon}</div><div style={{fontSize:22,fontWeight:800,color:c.text,marginBottom:2}}>{value}</div><div style={{fontSize:12,color:'var(--text-3)',fontWeight:600}}>{label}</div></div>);
 }
 function TaskCard({task,onComplete,globalUserTasksState}){
   const isDone=globalUserTasksState?.[task.id]||globalUserTasksState?.[String(task.id)]||false;
@@ -441,7 +403,7 @@ function LandingPage({setScreen,setPlanSelection}){
             <div style={{fontSize:44,fontWeight:900,margin:'18px 0 4px',fontFamily:"'Sora',sans-serif"}}>₦4,000</div>
             <div style={{color:'var(--text-3)',fontSize:13,marginBottom:24}}>One-time activation fee</div>
             <div className="divider"/>
-            {['8 tasks per day','₦500 welcome bonus credit','₦500 per referral earned','Direct bank withdrawal','-secured payments'].map(f=>(<div key={f} style={{display:'flex',gap:10,marginBottom:12,fontSize:14,color:'var(--text-2)',alignItems:'center'}}><span style={{color:'var(--green)',fontWeight:800,fontSize:13,width:18,flexShrink:0}}>✓</span>{f}</div>))}
+            {['8 tasks per day','₦500 welcome bonus credit','₦500 per referral earned','Direct bank withdrawal','Secured payments'].map(f=>(<div key={f} style={{display:'flex',gap:10,marginBottom:12,fontSize:14,color:'var(--text-2)',alignItems:'center'}}><span style={{color:'var(--green)',fontWeight:800,fontSize:13,width:18,flexShrink:0}}>✓</span>{f}</div>))}
             <button className="btn btn-outline btn-full" style={{marginTop:24}} onClick={()=>{setPlanSelection('basic');setScreen('signup');}}>Get Started — Basic</button>
           </div>
           <div className="plan-card featured" style={{position:'relative'}}>
@@ -458,6 +420,62 @@ function LandingPage({setScreen,setPlanSelection}){
       <footer style={{textAlign:'center',padding:'28px 20px',borderTop:'1px solid var(--border)',color:'var(--text-3)',fontSize:13}}>© 2026 9jaWatchers · Nigeria's Trusted Task Earning Platform</footer>
     </div>
   );
+}
+
+// ─── FIX 1: Robust referral crediting helper ────────────────────────────────
+// Finds referrer by matching UUID suffix and atomically credits their balance.
+// Returns the credited commission amount or 0 if no referrer found.
+async function creditReferrer(refCode, newUserPlan) {
+  if (!refCode) return 0;
+  try {
+    // Parse last segment of ref code, e.g. "9JW-PREM-a3f9" → "a3f9"
+    const parts = refCode.trim().split('-');
+    const snip = parts[parts.length - 1].toLowerCase();
+    if (!snip || snip.length < 4) return 0;
+
+    // Query only profiles whose UUID ends with the snippet (case-insensitive)
+    // Using ilike for UUID suffix matching — much faster than fetching all rows
+    const { data: candidates, error } = await adminDb
+      .from('profiles')
+      .select('id, balance, plan, total_referrals, referral_earnings')
+      .ilike('id', `%${snip}`);
+
+    if (error || !candidates || candidates.length === 0) {
+      console.warn('[Referral] No referrer found for snip:', snip, error);
+      return 0;
+    }
+
+    // Pick the best match (exact suffix)
+    const referrer = candidates.find(p =>
+      p.id && p.id.toString().toLowerCase().endsWith(snip)
+    ) || candidates[0];
+
+    const commission = referrer.plan === 'premium' ? 1000 : 500;
+    const newBalance  = (referrer.balance || 0) + commission;
+    const newRefs     = (referrer.total_referrals || 0) + 1;
+    const newEarnings = (referrer.referral_earnings || 0) + commission;
+
+    // Atomic update — triggers realtime UPDATE event on the referrer's profile row
+    const { error: updateErr } = await adminDb
+      .from('profiles')
+      .update({
+        balance:           newBalance,
+        total_referrals:   newRefs,
+        referral_earnings: newEarnings,
+      })
+      .eq('id', referrer.id);
+
+    if (updateErr) {
+      console.error('[Referral] Credit update failed:', updateErr);
+      return 0;
+    }
+
+    console.log(`[Referral] ✅ Credited ₦${commission} to referrer ${referrer.id}`);
+    return commission;
+  } catch (err) {
+    console.error('[Referral] Unexpected error:', err);
+    return 0;
+  }
 }
 
 function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterNewUser}){
@@ -496,6 +514,9 @@ function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterN
     if(!email||!form.name.trim()){toast.error('Missing Info','Fill in name and email.');setStep(1);return;}
     if(typeof window.PaystackPop==='undefined'){toast.error('Payment Error','Paystack not loaded. Refresh.');return;}
     const amt=(selPlan==='premium'?8000:4000)*100;
+    // Capture ref code before opening payment modal (localStorage can be cleared)
+    const capturedRefCode = localStorage.getItem('9ja_active_ref_code') || null;
+
     try{
       const pp=new window.PaystackPop();
       pp.newTransaction({
@@ -506,27 +527,47 @@ function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterN
           toast.info('Payment Received',`Ref: ${tx.reference} — Setting up account…`);
           setBusy(true);
           try{
+            // 1. Create auth user
             const {data:authData,error:authErr}=await db.auth.signUp({email:form.email.toLowerCase().trim(),password:form.password});
             if(authErr)throw authErr;
+
             const bal=selPlan==='premium'?1000:500;
-            const profile={id:authData.user.id,name:form.name,email:form.email.toLowerCase().trim(),plan:selPlan,balance:bal,paid:true,status:'active',joined:new Date().toLocaleDateString('en-NG',{day:'2-digit',month:'short',year:'numeric'}),total_referrals:0,referral_earnings:0};
+            const profile={
+              id:authData.user.id,
+              name:form.name,
+              email:form.email.toLowerCase().trim(),
+              plan:selPlan,
+              balance:bal,
+              paid:true,
+              status:'active',
+              joined:new Date().toLocaleDateString('en-NG',{day:'2-digit',month:'short',year:'numeric'}),
+              total_referrals:0,
+              referral_earnings:0,
+              // FIX: store the ref code that recruited this user for audit trail
+              referred_by: capturedRefCode || null,
+            };
+
+            // 2. Insert new user profile
             const {error:pErr}=await db.from('profiles').insert([profile]);
             if(pErr)throw pErr;
-            const ref=localStorage.getItem('9ja_active_ref_code');
-            if(ref){
-              const snip=ref.split('-').pop();
-              const {data:all}=await adminDb.from('profiles').select('*');
-              if(all){
-                const parent=all.find(p=>p.id&&p.id.toString().slice(-4)===snip);
-                if(parent){
-                  const comm=parent.plan==='premium'?1000:500;
-                  await adminDb.from('profiles').update({balance:(parent.balance||0)+comm,total_referrals:(parent.total_referrals||0)+1,referral_earnings:(parent.referral_earnings||0)+comm}).eq('id',parent.id);
-                  localStorage.removeItem('9ja_active_ref_code');
-                }
+
+            // 3. FIX: Credit referrer using robust helper — runs AFTER new profile insert
+            if(capturedRefCode){
+              const credited = await creditReferrer(capturedRefCode, selPlan);
+              if(credited > 0){
+                // Remove ref code only after successful crediting
+                localStorage.removeItem('9ja_active_ref_code');
+                toast.success('Referral Bonus Sent! 🎉',`Your referrer just received ${naira(credited)}!`);
               }
             }
+
+            // 4. Cache profile locally and notify parent
             store.set(SK.UP(form.email),profile);
-            if(onRegisterNewUser)onRegisterNewUser({id:profile.id,name:profile.name,email:profile.email,plan:profile.plan,balance:profile.balance,joined:profile.joined,tasks:0,refs:0,status:'active'});
+            if(onRegisterNewUser)onRegisterNewUser({
+              id:profile.id,name:profile.name,email:profile.email,
+              plan:profile.plan,balance:profile.balance,
+              joined:profile.joined,tasks:0,refs:0,status:'active'
+            });
             toast.success('Welcome to 9jaWatchers! 🎉',`Account live, ${form.name.split(' ')[0]}!`);
             onLoginSuccess(selPlan,profile);
           }catch(err){toast.error('Setup Failed',`Payment ok but setup failed: ${err.message}`);}
@@ -596,6 +637,8 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
   const [showUpgrade,setShowUpgrade]=useState(false);
   const [liveRefs,setLiveRefs]=useState(currentUser?.total_referrals||0);
   const [liveEarn,setLiveEarn]=useState(currentUser?.referral_earnings||0);
+  // FIX 2: Track flash animation for when referral bonus arrives
+  const [refFlash,setRefFlash]=useState(false);
 
   const [tasksList, setTasksList] = useState(() => store.get(SK.TASKS) || []);
   const tasksListRef = useRef(tasksList);
@@ -621,42 +664,106 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
   const [userWD, setUserWD] = useState([]);
   const [wdLoading, setWdLoading] = useState(false);
 
+  // ─── FIX 2: Realtime subscription to OWN profile row ──────────────────────
+  // This is what makes referral bonuses (and any balance changes) appear
+  // instantly on the referrer's dashboard without them needing to refresh.
   useEffect(() => {
-  if (!currentUser?.email) return;
-  const initialFetch = async () => {
-    const { data: { session } } = await db.auth.getSession();
-    if (!session) return;
-    setWdLoading(true);
-    try {
-      const { data, error } = await db.from('withdrawals').select('*').eq('email', currentUser.email).order('id', { ascending: false });
-      if (!error && data) {
-        setUserWD(data.map(w => ({id:w.id,amount:w.amount,bank:w.bank||'',account:w.account_number||w.account||'',accountName:w.account_name||'',status:w.status,date:w.request_date||w.date||'—'})));
-      }
-    } catch(e) {}
-    finally { setWdLoading(false); }
-  };
-  const realtimeFetch = async () => {
-    try {
-      const { data, error } = await db.from('withdrawals').select('*').eq('email', currentUser.email).order('id', { ascending: false });
-      if (!error && data) {
-        setUserWD(data.map(w => ({id:w.id,amount:w.amount,bank:w.bank||'',account:w.account_number||w.account||'',accountName:w.account_name||'',status:w.status,date:w.request_date||w.date||'—'})));
-      }
-    } catch(e) {}
-  };
-  initialFetch();
-  const { data: { subscription: authSub } } = db.auth.onAuthStateChange((event, session) => {
-    if (session && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) { initialFetch(); }
-  });
-  const ch = db.channel(`user-wd-${currentUser.email}`)
-    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'withdrawals',filter:`email=eq.${currentUser.email}`},
-    (payload) => {
-      if (payload.new) {
-        setUserWD(prev => prev.map(w => w.id === payload.new.id ? {...w,status:payload.new.status,amount:payload.new.amount,bank:payload.new.bank||w.bank,account:payload.new.account_number||w.account,accountName:payload.new.account_name||w.accountName,date:payload.new.request_date||w.date} : w));
-      }
-      realtimeFetch();
-    }).subscribe();
-  return () => { authSub.unsubscribe(); db.removeChannel(ch); };
-}, [currentUser?.email]);
+    if (!currentUser?.id) return;
+
+    const fetchProfile = async () => {
+      try {
+        const { data } = await db.from('profiles')
+          .select('balance, total_referrals, referral_earnings')
+          .eq('id', currentUser.id)
+          .single();
+        if (data) {
+          setUserBalance(data.balance);
+          setLiveRefs(data.total_referrals || 0);
+          setLiveEarn(data.referral_earnings || 0);
+        }
+      } catch(e) {}
+    };
+
+    // Subscribe to any UPDATE on this user's profile row
+    const ch = db.channel(`profile-live-${currentUser.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event:  'UPDATE',
+          schema: 'public',
+          table:  'profiles',
+          filter: `id=eq.${currentUser.id}`,
+        },
+        (payload) => {
+          if (!payload.new) return;
+          const prev = { balance: userBalance, refs: liveRefs, earn: liveEarn };
+          const newBal  = payload.new.balance;
+          const newRefs = payload.new.total_referrals || 0;
+          const newEarn = payload.new.referral_earnings || 0;
+
+          setUserBalance(newBal);
+          setLiveRefs(newRefs);
+          setLiveEarn(newEarn);
+
+          // FIX 2b: Show flash + toast when a referral bonus arrives
+          if (newRefs > (prev.refs) || newEarn > (prev.earn)) {
+            const bonus = newEarn - prev.earn;
+            if (bonus > 0) {
+              setRefFlash(true);
+              setTimeout(() => setRefFlash(false), 2500);
+              toast.success(
+                '🎉 Referral Bonus Received!',
+                `+${naira(bonus)} added to your balance from a new referral!`
+              );
+            }
+          }
+        }
+      )
+      .subscribe((status) => {
+        // Do an initial fetch when channel connects to ensure we're in sync
+        if (status === 'SUBSCRIBED') fetchProfile();
+      });
+
+    return () => { db.removeChannel(ch); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    if (!currentUser?.email) return;
+    const initialFetch = async () => {
+      const { data: { session } } = await db.auth.getSession();
+      if (!session) return;
+      setWdLoading(true);
+      try {
+        const { data, error } = await db.from('withdrawals').select('*').eq('email', currentUser.email).order('id', { ascending: false });
+        if (!error && data) {
+          setUserWD(data.map(w => ({id:w.id,amount:w.amount,bank:w.bank||'',account:w.account_number||w.account||'',accountName:w.account_name||'',status:w.status,date:w.request_date||w.date||'—'})));
+        }
+      } catch(e) {}
+      finally { setWdLoading(false); }
+    };
+    const realtimeFetch = async () => {
+      try {
+        const { data, error } = await db.from('withdrawals').select('*').eq('email', currentUser.email).order('id', { ascending: false });
+        if (!error && data) {
+          setUserWD(data.map(w => ({id:w.id,amount:w.amount,bank:w.bank||'',account:w.account_number||w.account||'',accountName:w.account_name||'',status:w.status,date:w.request_date||w.date||'—'})));
+        }
+      } catch(e) {}
+    };
+    initialFetch();
+    const { data: { subscription: authSub } } = db.auth.onAuthStateChange((event, session) => {
+      if (session && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) { initialFetch(); }
+    });
+    const ch = db.channel(`user-wd-${currentUser.email}`)
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'withdrawals',filter:`email=eq.${currentUser.email}`},
+      (payload) => {
+        if (payload.new) {
+          setUserWD(prev => prev.map(w => w.id === payload.new.id ? {...w,status:payload.new.status,amount:payload.new.amount,bank:payload.new.bank||w.bank,account:payload.new.account_number||w.account,accountName:payload.new.account_name||w.accountName,date:payload.new.request_date||w.date} : w));
+        }
+        realtimeFetch();
+      }).subscribe();
+    return () => { authSub.unsubscribe(); db.removeChannel(ch); };
+  }, [currentUser?.email]);
 
   const isPrem=plan==='premium';
   const myTasks=tasksList.filter(t=>t.plan==='both'||t.plan===plan);
@@ -664,17 +771,6 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
     const s=store.get(SK.UP(currentUser?.email||''));
     return s?.historyLog||[{label:'Welcome Bonus — Account Activated',amount:isPrem?1000:500,type:'credit',timestamp:'Account Created'}];
   });
-
-  useEffect(()=>{
-    if(!currentUser?.id||page!=='referrals')return;
-    const f=async()=>{
-      try{
-        const {data}=await db.from('profiles').select('total_referrals,referral_earnings,balance').eq('id',currentUser.id).single();
-        if(data){setLiveRefs(data.total_referrals||0);setLiveEarn(data.referral_earnings||0);setUserBalance(data.balance);}
-      }catch(e){}
-    };
-    f();
-  },[page,currentUser?.id]);
 
   const refCode=`9JW-${isPrem?'PREM':'BASC'}-${currentUser?.id?.toString().slice(-4)||'2026'}`;
   const refLink=`https://naijawatchers.site/?ref=${refCode}`;
@@ -754,7 +850,7 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
           {page==='dashboard'&&(<div className="fade-in">
             <div style={{marginBottom:28}}><h1 style={{fontSize:26,fontWeight:900,marginBottom:4,fontFamily:"'Sora',sans-serif"}}>Hey, {currentUser?.name?.split(' ')[0]||'Earner'} 👋</h1><p style={{color:'var(--text-3)',fontSize:14}}>Here's your earning overview for today.</p></div>
             <div className="stats-row" style={{display:'flex',gap:16,marginBottom:28,flexWrap:'wrap'}}>
-              <StatCard label="Available Balance" value={naira(userBalance)} icon="💰" accent="gold"/>
+              <StatCard label="Available Balance" value={naira(userBalance)} icon="💰" accent="gold" flash={refFlash}/>
               <StatCard label="Earned Today" value={naira(earnedToday)} icon="📈" accent="green"/>
               <StatCard label="Tasks Done" value={`${doneCount}/${myTasks.length}`} icon="⚡" accent="blue"/>
             </div>
@@ -864,13 +960,18 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
               <div style={{display:'flex',gap:10}}><input readOnly type="text" className="input" value={refLink} style={{fontWeight:600,fontSize:13,color:'var(--green)'}}/><button className="btn btn-primary btn-sm" style={{flexShrink:0}} onClick={()=>{navigator.clipboard?.writeText(refLink);toast.success('Link Copied!','Share it and earn when friends register.');}}>Copy</button></div>
             </div>
             <div className="stats-row" style={{display:'flex',gap:16,flexWrap:'wrap',marginBottom:20}}>
-              <StatCard label="Total Referrals" value={`${liveRefs} users`} icon="👥" accent="blue"/>
-              <StatCard label="Referral Earnings" value={naira(liveEarn)} icon="💰" accent="gold"/>
+              <StatCard label="Total Referrals" value={`${liveRefs} users`} icon="👥" accent="blue" flash={refFlash}/>
+              <StatCard label="Referral Earnings" value={naira(liveEarn)} icon="💰" accent="gold" flash={refFlash}/>
               <StatCard label="Per Referral" value={isPrem?'₦1,000':'₦500'} icon="🎯" accent="green"/>
+            </div>
+            {/* FIX 3: Live indicator on referrals page */}
+            <div style={{display:'flex',alignItems:'center',gap:6,fontSize:12,color:'var(--green)',fontWeight:700,marginBottom:16}}>
+              <span className="live-dot"/>
+              <span>Live — your earnings update instantly when someone registers with your link</span>
             </div>
             <div className="card" style={{background:'var(--purple-light)',border:'1px solid #c4b5fd'}}>
               <h4 style={{fontWeight:800,fontSize:14,marginBottom:10,color:'var(--purple)'}}>How it works</h4>
-              {['Share your unique link with friends','They register and pay their activation fee','You instantly earn your commission','No limit on how many people you can refer!'].map((s,i)=>(
+              {['Share your unique link with friends','They register and pay their activation fee','You instantly earn your commission — credited in real-time!','No limit on how many people you can refer!'].map((s,i)=>(
                 <div key={i} style={{display:'flex',gap:12,marginBottom:8,alignItems:'flex-start'}}><span style={{width:22,height:22,borderRadius:'50%',background:'var(--purple)',color:'#fff',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:800,flexShrink:0}}>{i+1}</span><span style={{fontSize:13,color:'var(--text-2)',lineHeight:1.5}}>{s}</span></div>
               ))}
             </div>
@@ -1270,7 +1371,7 @@ function App(){
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
 
-<!-- ═══ Sweet Effects Engine — runs after React mounts ══════════════════ -->
+<!-- ═══ Sweet Effects Engine ════════════════════════════════════════════════ -->
 <script>
 (function(){
   var PHRASES=["For Every Click You Make","Watching Nigerian Brands","With Just Your Smartphone","Paid Daily To Your Bank","By Engaging Top Brands"];
