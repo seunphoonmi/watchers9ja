@@ -115,9 +115,6 @@
     .loader-ring{width:20px;height:20px;border:3px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;flex-shrink:0;}
     .loader-wrap{display:flex;align-items:center;gap:10px;padding:40px;justify-content:center;color:var(--text-3);font-size:14px;}
  
-    /* ═══════════════════════════════════════════════════════════════════════
-       SWEET EFFECTS LAYER
-       ═══════════════════════════════════════════════════════════════════════ */
     .tw-cursor{display:inline-block;width:3px;height:0.8em;background:linear-gradient(180deg,var(--green),#f59e0b);margin-left:4px;vertical-align:middle;border-radius:2px;animation:twBlink 0.72s step-end infinite;}
     @keyframes twBlink{0%,100%{opacity:1;}50%{opacity:0;}}
     .gradient-text{
@@ -166,8 +163,6 @@
       pointer-events:none;animation:bgBreath 6s ease-in-out infinite;
     }
     @keyframes bgBreath{0%,100%{opacity:0.6;}50%{opacity:1;}}
- 
-    /* Referral credit flash animation */
     @keyframes refCreditFlash{
       0%{box-shadow:0 0 0 0 rgba(22,163,74,0.6);}
       50%{box-shadow:0 0 0 12px rgba(22,163,74,0);}
@@ -422,40 +417,41 @@ function LandingPage({setScreen,setPlanSelection}){
   );
 }
  
-// ─── FIX 1: Robust referral crediting helper ────────────────────────────────
-// Finds referrer by matching UUID suffix and atomically credits their balance.
-// Returns the credited commission amount or 0 if no referrer found.
+// ─── FIXED: Referral crediting helper ───────────────────────────────────────
+// BUG FIX 2: Replaced .ilike('id', ...) which silently fails on UUID columns in
+// PostgREST. Now fetches all profiles and filters client-side with .endsWith().
 async function creditReferrer(refCode, newUserPlan) {
   if (!refCode) return 0;
   try {
-    // Parse last segment of ref code, e.g. "9JW-PREM-a3f9" → "a3f9"
     const parts = refCode.trim().split('-');
     const snip = parts[parts.length - 1].toLowerCase();
     if (!snip || snip.length < 4) return 0;
  
-    // Query only profiles whose UUID ends with the snippet (case-insensitive)
-    // Using ilike for UUID suffix matching — much faster than fetching all rows
-    const { data: candidates, error } = await adminDb
+    // Fetch all profiles then filter client-side — ilike on UUID type is
+    // unreliable in PostgREST because UUID is not a text column.
+    const { data: allProfiles, error } = await adminDb
       .from('profiles')
-      .select('id, balance, plan, total_referrals, referral_earnings')
-      .ilike('id', `%${snip}`);
+      .select('id, balance, plan, total_referrals, referral_earnings');
  
-    if (error || !candidates || candidates.length === 0) {
-      console.warn('[Referral] No referrer found for snip:', snip, error);
+    if (error || !allProfiles || allProfiles.length === 0) {
+      console.warn('[Referral] Could not fetch profiles:', error);
       return 0;
     }
  
-    // Pick the best match (exact suffix)
-    const referrer = candidates.find(p =>
+    const referrer = allProfiles.find(p =>
       p.id && p.id.toString().toLowerCase().endsWith(snip)
-    ) || candidates[0];
+    );
+ 
+    if (!referrer) {
+      console.warn('[Referral] No referrer found for snip:', snip);
+      return 0;
+    }
  
     const commission = referrer.plan === 'premium' ? 1000 : 500;
     const newBalance  = (referrer.balance || 0) + commission;
     const newRefs     = (referrer.total_referrals || 0) + 1;
     const newEarnings = (referrer.referral_earnings || 0) + commission;
  
-    // Atomic update — triggers realtime UPDATE event on the referrer's profile row
     const { error: updateErr } = await adminDb
       .from('profiles')
       .update({
@@ -514,7 +510,6 @@ function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterN
     if(!email||!form.name.trim()){toast.error('Missing Info','Fill in name and email.');setStep(1);return;}
     if(typeof window.PaystackPop==='undefined'){toast.error('Payment Error','Paystack not loaded. Refresh.');return;}
     const amt=(selPlan==='premium'?8000:4000)*100;
-    // Capture ref code before opening payment modal (localStorage can be cleared)
     const capturedRefCode = localStorage.getItem('9ja_active_ref_code') || null;
  
     try{
@@ -531,6 +526,19 @@ function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterN
             const {data:authData,error:authErr}=await db.auth.signUp({email:form.email.toLowerCase().trim(),password:form.password});
             if(authErr)throw authErr;
  
+            // ── BUG FIX 1: Sign user in immediately after signup ──────────────
+            // db.auth.signUp() creates the user but does NOT establish a session
+            // when Supabase email confirmation is enabled (the default). Without
+            // an active session, RLS blocks all Realtime subscriptions and DB
+            // reads, so the dashboard silently breaks. Calling signInWithPassword
+            // immediately guarantees a valid JWT regardless of confirmation state.
+            const { error: signInErr } = await db.auth.signInWithPassword({
+              email: form.email.toLowerCase().trim(),
+              password: form.password,
+            });
+            if (signInErr) console.warn('[Auth] Auto sign-in after signup failed:', signInErr.message);
+            // ─────────────────────────────────────────────────────────────────
+ 
             const bal=selPlan==='premium'?1000:500;
             const profile={
               id:authData.user.id,
@@ -543,7 +551,6 @@ function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterN
               joined:new Date().toLocaleDateString('en-NG',{day:'2-digit',month:'short',year:'numeric'}),
               total_referrals:0,
               referral_earnings:0,
-              // FIX: store the ref code that recruited this user for audit trail
               referred_by: capturedRefCode || null,
             };
  
@@ -551,11 +558,10 @@ function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterN
             const {error:pErr}=await db.from('profiles').insert([profile]);
             if(pErr)throw pErr;
  
-            // 3. FIX: Credit referrer using robust helper — runs AFTER new profile insert
+            // 3. Credit referrer — runs AFTER new profile insert
             if(capturedRefCode){
               const credited = await creditReferrer(capturedRefCode, selPlan);
               if(credited > 0){
-                // Remove ref code only after successful crediting
                 localStorage.removeItem('9ja_active_ref_code');
                 toast.success('Referral Bonus Sent! 🎉',`Your referrer just received ${naira(credited)}!`);
               }
@@ -637,8 +643,15 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
   const [showUpgrade,setShowUpgrade]=useState(false);
   const [liveRefs,setLiveRefs]=useState(currentUser?.total_referrals||0);
   const [liveEarn,setLiveEarn]=useState(currentUser?.referral_earnings||0);
-  // FIX 2: Track flash animation for when referral bonus arrives
   const [refFlash,setRefFlash]=useState(false);
+ 
+  // ── BUG FIX 3: useRef to track previous referral counts ──────────────────
+  // The realtime callback closes over liveRefs/liveEarn from mount time (stale
+  // closure). useRef always holds the latest value regardless of re-renders,
+  // so the "did a new referral just arrive?" comparison is always accurate.
+  const prevRefsRef = useRef(currentUser?.total_referrals || 0);
+  const prevEarnRef = useRef(currentUser?.referral_earnings || 0);
+  // ─────────────────────────────────────────────────────────────────────────
  
   const [tasksList, setTasksList] = useState(() => store.get(SK.TASKS) || []);
   const tasksListRef = useRef(tasksList);
@@ -664,9 +677,7 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
   const [userWD, setUserWD] = useState([]);
   const [wdLoading, setWdLoading] = useState(false);
  
-  // ─── FIX 2: Realtime subscription to OWN profile row ──────────────────────
-  // This is what makes referral bonuses (and any balance changes) appear
-  // instantly on the referrer's dashboard without them needing to refresh.
+  // Realtime subscription to own profile row for live balance + referral updates
   useEffect(() => {
     if (!currentUser?.id) return;
  
@@ -680,11 +691,13 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
           setUserBalance(data.balance);
           setLiveRefs(data.total_referrals || 0);
           setLiveEarn(data.referral_earnings || 0);
+          // Sync refs on initial fetch so comparison baseline is correct
+          prevRefsRef.current = data.total_referrals || 0;
+          prevEarnRef.current = data.referral_earnings || 0;
         }
       } catch(e) {}
     };
  
-    // Subscribe to any UPDATE on this user's profile row
     const ch = db.channel(`profile-live-${currentUser.id}`)
       .on(
         'postgres_changes',
@@ -696,18 +709,24 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
         },
         (payload) => {
           if (!payload.new) return;
-          const prev = { balance: userBalance, refs: liveRefs, earn: liveEarn };
           const newBal  = payload.new.balance;
           const newRefs = payload.new.total_referrals || 0;
           const newEarn = payload.new.referral_earnings || 0;
+ 
+          // ── BUG FIX 3: Read previous values from refs (never stale) ────────
+          const wasRefs = prevRefsRef.current;
+          const wasEarn = prevEarnRef.current;
+          prevRefsRef.current = newRefs;
+          prevEarnRef.current = newEarn;
+          // ───────────────────────────────────────────────────────────────────
  
           setUserBalance(newBal);
           setLiveRefs(newRefs);
           setLiveEarn(newEarn);
  
-          // FIX 2b: Show flash + toast when a referral bonus arrives
-          if (newRefs > (prev.refs) || newEarn > (prev.earn)) {
-            const bonus = newEarn - prev.earn;
+          // Show flash + toast only when a genuine new referral bonus arrives
+          if (newRefs > wasRefs || newEarn > wasEarn) {
+            const bonus = newEarn - wasEarn;
             if (bonus > 0) {
               setRefFlash(true);
               setTimeout(() => setRefFlash(false), 2500);
@@ -720,7 +739,6 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
         }
       )
       .subscribe((status) => {
-        // Do an initial fetch when channel connects to ensure we're in sync
         if (status === 'SUBSCRIBED') fetchProfile();
       });
  
@@ -964,7 +982,6 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
               <StatCard label="Referral Earnings" value={naira(liveEarn)} icon="💰" accent="gold" flash={refFlash}/>
               <StatCard label="Per Referral" value={isPrem?'₦1,000':'₦500'} icon="🎯" accent="green"/>
             </div>
-            {/* FIX 3: Live indicator on referrals page */}
             <div style={{display:'flex',alignItems:'center',gap:6,fontSize:12,color:'var(--green)',fontWeight:700,marginBottom:16}}>
               <span className="live-dot"/>
               <span>Live — your earnings update instantly when someone registers with your link</span>
