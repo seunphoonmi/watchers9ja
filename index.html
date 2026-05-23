@@ -114,6 +114,82 @@
     @keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.4;transform:scale(1.4);}}
     .loader-ring{width:20px;height:20px;border:3px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;flex-shrink:0;}
     .loader-wrap{display:flex;align-items:center;gap:10px;padding:40px;justify-content:center;color:var(--text-3);font-size:14px;}
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       SWEET EFFECTS LAYER — visual polish injected on top, non-breaking
+       ═══════════════════════════════════════════════════════════════════════ */
+
+    /* Typewriter blinking cursor */
+    .tw-cursor{display:inline-block;width:3px;height:0.8em;background:linear-gradient(180deg,var(--green),#f59e0b);margin-left:4px;vertical-align:middle;border-radius:2px;animation:twBlink 0.72s step-end infinite;}
+    @keyframes twBlink{0%,100%{opacity:1;}50%{opacity:0;}}
+
+    /* Animated shimmer on the gradient headline */
+    .gradient-text{
+      background-size:260% auto !important;
+      background-image:linear-gradient(115deg,var(--green) 0%,#f59e0b 30%,#10b981 52%,#7c3aed 74%,var(--green) 100%) !important;
+      animation:shimmerText 5.5s linear infinite;
+      -webkit-background-clip:text !important;
+      background-clip:text !important;
+      -webkit-text-fill-color:transparent !important;
+    }
+    @keyframes shimmerText{0%{background-position:0% center;}100%{background-position:260% center;}}
+
+    /* Logo mark soft pulse ring */
+    .logo-mark-wrap{position:relative;display:inline-flex;align-items:center;}
+    .logo-pulse-ring{position:absolute;inset:-5px;border-radius:15px;border:2.5px solid rgba(22,163,74,0.36);animation:logoPulse 2.7s ease-in-out infinite;pointer-events:none;}
+    @keyframes logoPulse{0%,100%{opacity:0.55;transform:scale(1);}50%{opacity:0;transform:scale(1.25);}}
+
+    /* Hero floating sparkle particles */
+    .hero-sparks{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:1;}
+    .spark{position:absolute;border-radius:50%;opacity:0;animation:sparkFloat linear infinite;}
+    @keyframes sparkFloat{
+      0%{opacity:0;transform:translateY(0) scale(0.4) rotate(0deg);}
+      12%{opacity:1;}
+      80%{opacity:0.55;}
+      100%{opacity:0;transform:translateY(-175px) scale(1.45) rotate(200deg);}
+    }
+
+    /* Hero pill gentle bounce */
+    .hero-pill-anim{animation:pillBounce 3.6s ease-in-out infinite;}
+    @keyframes pillBounce{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);}}
+
+    /* Hero stat items floating stagger */
+    .hero-stat-float{animation:hStatFloat 4.2s ease-in-out infinite;}
+    .hero-stat-float:nth-child(2){animation-delay:1.4s;}
+    .hero-stat-float:nth-child(3){animation-delay:2.8s;}
+    @keyframes hStatFloat{0%,100%{transform:translateY(0);}50%{transform:translateY(-7px);}}
+
+    /* Nav CTA glow ring pulse */
+    .nav-cta-glow{animation:ctaGlow 2.9s ease-out infinite;}
+    @keyframes ctaGlow{
+      0%,100%{box-shadow:0 4px 14px rgba(22,163,74,0.28),0 0 0 0 rgba(22,163,74,0.3);}
+      50%{box-shadow:0 4px 14px rgba(22,163,74,0.28),0 0 0 9px rgba(22,163,74,0);}
+    }
+
+    /* Plan card enhanced hover lift */
+    .plan-card{transition:transform 0.28s cubic-bezier(0.34,1.3,0.64,1),box-shadow 0.28s ease !important;}
+    .plan-card:hover{transform:translateY(-8px) scale(1.013) !important;box-shadow:0 24px 56px rgba(22,163,74,0.13),0 4px 16px rgba(0,0,0,0.07) !important;}
+    .plan-card.featured:hover{box-shadow:0 24px 56px rgba(124,58,237,0.17),0 4px 16px rgba(0,0,0,0.07) !important;}
+
+    /* Scroll reveal for plan/stat cards */
+    .reveal-up{opacity:0;transform:translateY(28px);transition:opacity 0.52s ease,transform 0.52s cubic-bezier(0.34,1.1,0.64,1);}
+    .reveal-up.vis{opacity:1;transform:none;}
+
+    /* Task card staggered entrance */
+    .tc-anim{animation:tcSlide 0.38s cubic-bezier(0.34,1.2,0.64,1) both;}
+    @keyframes tcSlide{from{opacity:0;transform:translateX(-12px) scale(0.98);}to{opacity:1;transform:none;}}
+
+    /* Stat card hover lift */
+    .stat-card{transition:transform 0.2s ease,box-shadow 0.2s ease;}
+    .stat-card:hover{transform:translateY(-3px);box-shadow:var(--shadow);}
+
+    /* Hero section background shimmer overlay */
+    .hero-bg::after{
+      content:'';position:absolute;inset:0;
+      background:radial-gradient(ellipse 55% 40% at 50% 52%,rgba(22,163,74,0.045) 0%,transparent 70%);
+      pointer-events:none;animation:bgBreath 6s ease-in-out infinite;
+    }
+    @keyframes bgBreath{0%,100%{opacity:0.6;}50%{opacity:1;}}
   </style>
 </head>
 <body>
@@ -122,14 +198,9 @@
 <script type="text/babel">
 const { useState, useEffect, useRef, useCallback } = React;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SUPABASE CLIENTS
-// db      → anon key  — used by regular users (respects RLS)
-// adminDb → service-role key — used ONLY by admin panel (bypasses RLS entirely)
-// ─────────────────────────────────────────────────────────────────────────────
 const SUPABASE_URL = "https://wvvggkqsohzmbypdjexc.supabase.co";
 const ANON_KEY     = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2dmdna3Fzb2h6bWJ5cGRqZXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxODI5NDYsImV4cCI6MjA5NDc1ODk0Nn0.AJtvvZMA9tFSBXlwXLmZ3oEP5skFAl92sbv4Br2McKA";
-const SERVICE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2dmdna3Fzb2h6bWJ5cGRqZXhjIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTE4Mjk0NiwiZXhwIjoyMDk0NzU4OTQ2fQ.58IcCa0bFz0YKhS8ocCCbUC71U51-sIcw8t9XMbD5-8"; // ← REPLACE THIS
+const SERVICE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2dmdna3Fzb2h6bWJ5cGRqZXhjIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTE4Mjk0NiwiZXhwIjoyMDk0NzU4OTQ2fQ.58IcCa0bFz0YKhS8ocCCbUC71U51-sIcw8t9XMbD5-8";
 
 const { createClient } = window.supabase;
 const db      = createClient(SUPABASE_URL, ANON_KEY);
@@ -139,7 +210,6 @@ const adminDb = createClient(SUPABASE_URL, SERVICE_KEY, {
 
 const ADMIN_EMAIL = "admin@naijawatchers.com";
 
-// ── TOAST ──────────────────────────────────────────────────────────────────
 let _tc = 0; const _tl = new Set();
 const toast = {
   _emit(d){ const id=++_tc,item={id,...d}; _tl.forEach(fn=>fn(p=>[...p,item])); setTimeout(()=>{ const el=document.getElementById(`toast-${id}`); if(el)el.classList.add('exiting'); setTimeout(()=>_tl.forEach(fn=>fn(p=>p.filter(t=>t.id!==id))),260); },d.duration||4500); return id; },
@@ -178,7 +248,6 @@ function ConfirmModal({open,title,message,confirmLabel='Confirm',onConfirm,onCan
   );
 }
 
-// ── CONSTANTS ──────────────────────────────────────────────────────────────
 const naira=n=>`₦${Number(n||0).toLocaleString()}`;
 const TASK_ICON={video:'▶',follow:'👤',like:'❤️',comment:'💬'};
 const TASK_CLR={
@@ -231,7 +300,6 @@ const mapWD = w => ({
   date: w.request_date || w.date || '—',
 });
 
-// ── EXPORT HELPERS ─────────────────────────────────────────────────────────
 const exportXLS=(data,fname,sheet='Sheet1')=>{
   if(!window.XLSX){toast.error('Export Error','XLSX library not loaded.');return;}
   const wb=window.XLSX.utils.book_new(),ws=window.XLSX.utils.json_to_sheet(data);
@@ -251,7 +319,6 @@ const exportPDF=(headers,rows,fname,title)=>{
   toast.success('Exported!',`${fname} saved as PDF.`);
 };
 
-// ── PRIMITIVES ─────────────────────────────────────────────────────────────
 function Logo({size='md'}){
   const sm=size==='sm';
   return(<div style={{display:'flex',alignItems:'center',gap:sm?8:10}}><div className="logo-mark" style={{width:sm?30:36,height:sm?30:36,fontSize:sm?15:18}}>9</div><span className="logo-text" style={{fontSize:sm?16:20}}>9ja<span>Watchers</span></span></div>);
@@ -336,7 +403,6 @@ function Sidebar({items,active,setPage,plan,onLogout,onUpgrade,pendingCount,curr
   </>);
 }
 
-// ── LANDING ────────────────────────────────────────────────────────────────
 function LandingPage({setScreen,setPlanSelection}){
   return(
     <div className="fade-in">
@@ -351,7 +417,7 @@ function LandingPage({setScreen,setPlanSelection}){
         <div className="hero-bg"/><div className="hero-dots"/>
         <div className="hero-content">
           <div className="pill" style={{background:'var(--green-light)',color:'var(--green)',border:'1px solid #86efac',marginBottom:24}}>🇳🇬 Nigeria's #1 Micro-Task Earning Platform</div>
-          <h1 className="hero-title" style={{fontSize:52,fontWeight:900,lineHeight:1.1,marginBottom:20,fontFamily:"'Sora',sans-serif"}}>Get Paid Real Cash<br/><span className="gradient-text">For Every Click You Make</span></h1>
+          <h1 className="hero-title" style={{fontSize:52,fontWeight:900,lineHeight:1.1,marginBottom:20,fontFamily:"'Sora',sans-serif"}}>Get Paid Real Cash<br/><span className="gradient-text"><span id="tw-target">For Every Click You Make</span><span className="tw-cursor"/></span></h1>
           <p style={{color:'var(--text-2)',fontSize:17,lineHeight:1.7,maxWidth:580,margin:'0 auto 36px'}}>Watch brand videos, follow pages, and engage with content. Earn instant Naira — withdrawn directly to your bank account.</p>
           <div className="hero-btns" style={{display:'flex',gap:14,justifyContent:'center',flexWrap:'wrap'}}>
             <button className="btn btn-primary btn-lg" onClick={()=>{setPlanSelection('premium');setScreen('signup');}}>🚀 Start Earning — Premium</button>
@@ -394,7 +460,6 @@ function LandingPage({setScreen,setPlanSelection}){
   );
 }
 
-// ── AUTH ───────────────────────────────────────────────────────────────────
 function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterNewUser}){
   const isLogin=mode==='login';
   const [step,setStep]=useState(1);
@@ -524,7 +589,6 @@ function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterN
   );
 }
 
-// ── USER DASHBOARD ─────────────────────────────────────────────────────────
 function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasksState,setGlobalUserTasksState,currentUser}){
   const [page,setPage]=useState('dashboard');
   const [wdSuccess,setWdSuccess]=useState(false);
@@ -533,15 +597,8 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
   const [liveRefs,setLiveRefs]=useState(currentUser?.total_referrals||0);
   const [liveEarn,setLiveEarn]=useState(currentUser?.referral_earnings||0);
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // FIX 1: Tasks are now LOCAL state inside UserDashboard.
-  // They are fetched fresh on mount, then kept live via Realtime.
-  // Using a ref for the fetch function prevents stale-closure issues in
-  // the Realtime callback — this is the core fix for task sync.
-  // ─────────────────────────────────────────────────────────────────────────
   const [tasksList, setTasksList] = useState(() => store.get(SK.TASKS) || []);
   const tasksListRef = useRef(tasksList);
-  // Keep ref in sync with state so the realtime callback always sees fresh data
   useEffect(() => { tasksListRef.current = tasksList; }, [tasksList]);
 
   useEffect(() => {
@@ -554,128 +611,51 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
         }
       } catch(e) {}
     };
-
     fetchTasks();
-
-    // Realtime channel for tasks — uses a stable named channel
-    // The callback re-fetches from DB so it always gets the full fresh list
-    // (avoiding stale closure problems with direct state manipulation)
     const ch = db.channel('tasks-realtime-user')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
-        fetchTasks(); // always re-fetch — never mutate state directly in realtime callback
-      })
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          // Channel is live — do a fresh fetch to catch anything missed during setup
-          fetchTasks();
-        }
-      });
-
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => { fetchTasks(); })
+      .subscribe((status) => { if (status === 'SUBSCRIBED') { fetchTasks(); } });
     return () => { db.removeChannel(ch); };
-  }, []); // Empty deps — runs once on mount, channel handles live updates
+  }, []);
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // FIX 2: User withdrawal history — same fix as before (correct)
-  // ─────────────────────────────────────────────────────────────────────────
   const [userWD, setUserWD] = useState([]);
   const [wdLoading, setWdLoading] = useState(false);
 
   useEffect(() => {
   if (!currentUser?.email) return;
-
-  // Separate fetch functions:
-  // - initialFetch: guards with session check (safe for first load)
-  // - realtimeFetch: no session gate (must fire instantly on realtime events)
   const initialFetch = async () => {
     const { data: { session } } = await db.auth.getSession();
     if (!session) return;
     setWdLoading(true);
     try {
-      const { data, error } = await db
-        .from('withdrawals')
-        .select('*')
-        .eq('email', currentUser.email)
-        .order('id', { ascending: false });
+      const { data, error } = await db.from('withdrawals').select('*').eq('email', currentUser.email).order('id', { ascending: false });
       if (!error && data) {
-        setUserWD(data.map(w => ({
-          id: w.id,
-          amount: w.amount,
-          bank: w.bank || '',
-          account: w.account_number || w.account || '',
-          accountName: w.account_name || '',
-          status: w.status,
-          date: w.request_date || w.date || '—',
-        })));
+        setUserWD(data.map(w => ({id:w.id,amount:w.amount,bank:w.bank||'',account:w.account_number||w.account||'',accountName:w.account_name||'',status:w.status,date:w.request_date||w.date||'—'})));
       }
     } catch(e) {}
     finally { setWdLoading(false); }
   };
-
   const realtimeFetch = async () => {
     try {
-      const { data, error } = await db
-        .from('withdrawals')
-        .select('*')
-        .eq('email', currentUser.email)
-        .order('id', { ascending: false });
+      const { data, error } = await db.from('withdrawals').select('*').eq('email', currentUser.email).order('id', { ascending: false });
       if (!error && data) {
-        setUserWD(data.map(w => ({
-          id: w.id,
-          amount: w.amount,
-          bank: w.bank || '',
-          account: w.account_number || w.account || '',
-          accountName: w.account_name || '',
-          status: w.status,
-          date: w.request_date || w.date || '—',
-        })));
+        setUserWD(data.map(w => ({id:w.id,amount:w.amount,bank:w.bank||'',account:w.account_number||w.account||'',accountName:w.account_name||'',status:w.status,date:w.request_date||w.date||'—'})));
       }
     } catch(e) {}
   };
-
   initialFetch();
-
   const { data: { subscription: authSub } } = db.auth.onAuthStateChange((event, session) => {
-    if (session && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-      initialFetch();
-    }
+    if (session && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) { initialFetch(); }
   });
-
   const ch = db.channel(`user-wd-${currentUser.email}`)
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'withdrawals',
-        filter: `email=eq.${currentUser.email}`
-      },
-      (payload) => {
-        // Directly update the specific row from the payload first (instant UI update)
-        // then do a full re-fetch to ensure consistency
-        if (payload.new) {
-          setUserWD(prev => prev.map(w =>
-            w.id === payload.new.id
-              ? {
-                  ...w,
-                  status: payload.new.status,
-                  amount: payload.new.amount,
-                  bank: payload.new.bank || w.bank,
-                  account: payload.new.account_number || w.account,
-                  accountName: payload.new.account_name || w.accountName,
-                  date: payload.new.request_date || w.date,
-                }
-              : w
-          ));
-        }
-        realtimeFetch(); // follow up with full re-fetch for consistency
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'withdrawals',filter:`email=eq.${currentUser.email}`},
+    (payload) => {
+      if (payload.new) {
+        setUserWD(prev => prev.map(w => w.id === payload.new.id ? {...w,status:payload.new.status,amount:payload.new.amount,bank:payload.new.bank||w.bank,account:payload.new.account_number||w.account,accountName:payload.new.account_name||w.accountName,date:payload.new.request_date||w.date} : w));
       }
-    )
-    .subscribe();
-
-  return () => {
-    authSub.unsubscribe();
-    db.removeChannel(ch);
-  };
+      realtimeFetch();
+    }).subscribe();
+  return () => { authSub.unsubscribe(); db.removeChannel(ch); };
 }, [currentUser?.email]);
 
   const isPrem=plan==='premium';
@@ -916,23 +896,15 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
   );
 }
 
-// ── ADMIN DASHBOARD ────────────────────────────────────────────────────────
 function AdminDashboard({onLogout,userManagementRows,setUserManagementRows}){
   const [page,setPage]=useState('overview');
   const [taskForm,setTaskForm]=useState({type:'video',title:'',url:'',reward:'',plan:'both'});
   const [taskSaved,setTaskSaved]=useState(false);
   const [confirm,setConfirm]=useState({open:false});
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // FIX 3: Both tasks AND withdrawals are now LOCAL state in AdminDashboard.
-  // They are never passed in from App — admin fetches everything itself via
-  // adminDb (service-role) AFTER the component mounts (i.e. after admin login).
-  // This is the root fix for the admin not seeing new withdrawal requests.
-  // ─────────────────────────────────────────────────────────────────────────
   const [globalTasksList, setGlobalTasksList] = useState(() => store.get(SK.TASKS) || []);
   const [withdrawalsList, setWithdrawalsList] = useState([]);
 
-  // Tasks — admin also subscribes to tasks realtime so they see their own changes reflected
   useEffect(() => {
     const fetchTasks = async () => {
       try {
@@ -947,7 +919,6 @@ function AdminDashboard({onLogout,userManagementRows,setUserManagementRows}){
     return () => adminDb.removeChannel(ch);
   }, []);
 
-  // Withdrawals — fetched via adminDb so RLS is bypassed and ALL rows are returned
   useEffect(() => {
     const fetchWD = async () => {
       try {
@@ -956,21 +927,12 @@ function AdminDashboard({onLogout,userManagementRows,setUserManagementRows}){
       } catch(e) { console.error('fetchWD:', e); }
     };
     fetchWD();
-
-    // ── KEY FIX: This channel is created HERE, inside AdminDashboard, ──────
-    // which only mounts AFTER admin login. At that point adminDb has valid
-    // service-role credentials, so the Realtime subscription succeeds.
-    // Previously this channel was created at App root before login → fail.
-    // ─────────────────────────────────────────────────────────────────────
     const ch = adminDb.channel('admin-withdrawals-rt')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'withdrawals' }, () => fetchWD())
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') fetchWD(); // catch anything missed during subscribe
-      });
+      .subscribe((status) => { if (status === 'SUBSCRIBED') fetchWD(); });
     return () => adminDb.removeChannel(ch);
   }, []);
 
-  // Users
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -1013,30 +975,17 @@ function AdminDashboard({onLogout,userManagementRows,setUserManagementRows}){
   };
 
   const approve = async (id) => {
-  const { error } = await adminDb
-    .from('withdrawals')
-    .update({ status: 'approved' })
-    .eq('id', id);
-  if (error) {
-    toast.error('Update Failed', error.message);
-    return;
-  }
-  setWithdrawalsList(p => p.map(w => w.id === id ? { ...w, status: 'approved' } : w));
-  toast.success('Approved', 'Payout approved.');
-};
-
-const reject = async (id) => {
-  const { error } = await adminDb
-    .from('withdrawals')
-    .update({ status: 'rejected' })
-    .eq('id', id);
-  if (error) {
-    toast.error('Update Failed', error.message);
-    return;
-  }
-  setWithdrawalsList(p => p.map(w => w.id === id ? { ...w, status: 'rejected' } : w));
-  toast.warning('Rejected', 'Request declined.');
-};
+    const { error } = await adminDb.from('withdrawals').update({ status: 'approved' }).eq('id', id);
+    if (error) { toast.error('Update Failed', error.message); return; }
+    setWithdrawalsList(p => p.map(w => w.id === id ? { ...w, status: 'approved' } : w));
+    toast.success('Approved', 'Payout approved.');
+  };
+  const reject = async (id) => {
+    const { error } = await adminDb.from('withdrawals').update({ status: 'rejected' }).eq('id', id);
+    if (error) { toast.error('Update Failed', error.message); return; }
+    setWithdrawalsList(p => p.map(w => w.id === id ? { ...w, status: 'rejected' } : w));
+    toast.warning('Rejected', 'Request declined.');
+  };
   const removeTask = id => {
     setGlobalTasksList(p => { const u = p.filter(t => t.id !== id); store.set(SK.TASKS, u); return u; });
     adminDb.from('tasks').delete().eq('id', id);
@@ -1052,7 +1001,6 @@ const reject = async (id) => {
     e.preventDefault();
     if (!taskForm.title || !taskForm.url || !taskForm.reward) return;
     const t = { type: taskForm.type, title: taskForm.title, url: taskForm.url, reward: Number(taskForm.reward), plan: taskForm.plan };
-    // Insert to DB — the realtime channel will pick it up and update local state automatically
     adminDb.from('tasks').insert([t]).then(({ error }) => {
       if (error) toast.error('Sync Error', error.message);
     });
@@ -1211,7 +1159,6 @@ const reject = async (id) => {
   );
 }
 
-// ── APP ROOT ────────────────────────────────────────────────────────────────
 function App(){
   const [screen,setScreen]=useState('landing');
   const [planOverride,setPlanOverride]=useState(null);
@@ -1221,20 +1168,13 @@ function App(){
   const [userBalance,setUserBalance]=useState(500);
   const [globalUserTasksState,setGlobalUserTasksState]=useState({});
 
-  // NOTE: globalTasksList, withdrawalsList and their setters are NO LONGER
-  // managed at App root. They live inside UserDashboard and AdminDashboard
-  // respectively. This eliminates the stale-channel / pre-login subscription bugs.
-
   useEffect(()=>{
     const init=async()=>{
       const ref=new URLSearchParams(window.location.search).get('ref');
       if(ref)localStorage.setItem('9ja_active_ref_code',ref.trim());
-
       const session=store.get(SK.SESSION);
       if(session&&session.role&&session.user){
-        setRoleContext(session.role);
-        setCurrentUser(session.user);
-        setScreen('portal');
+        setRoleContext(session.role);setCurrentUser(session.user);setScreen('portal');
         if(session.role!=='admin'){
           try{
             const {data}=await db.from('profiles').select('balance,tasks_state').eq('id',session.user.id).single();
@@ -1251,7 +1191,6 @@ function App(){
       }
     };
     init();
-
     const { data: { subscription } } = db.auth.onAuthStateChange(async(event, session) => {
       if (event === 'INITIAL_SESSION' && session) {
         const stored = store.get(SK.SESSION);
@@ -1260,23 +1199,13 @@ function App(){
             const { data } = await db.from('profiles').select('balance,tasks_state').eq('id', stored.user.id).single();
             if (data) {
               if (data.balance !== undefined) setUserBalance(data.balance);
-              if (data.tasks_state) {
-                const n = {};
-                Object.keys(data.tasks_state).forEach(k => { n[String(k)] = data.tasks_state[k]; });
-                setGlobalUserTasksState(n);
-              }
+              if (data.tasks_state) { const n = {}; Object.keys(data.tasks_state).forEach(k => { n[String(k)] = data.tasks_state[k]; }); setGlobalUserTasksState(n); }
             }
           } catch(e) {}
         }
       }
-      if (event === 'SIGNED_OUT') {
-        store.set(SK.SESSION, null);
-        setScreen('landing');
-        setRoleContext(null);
-        setCurrentUser(null);
-      }
+      if (event === 'SIGNED_OUT') { store.set(SK.SESSION, null); setScreen('landing'); setRoleContext(null); setCurrentUser(null); }
     });
-
     return () => subscription.unsubscribe();
   },[]);
 
@@ -1339,6 +1268,89 @@ function App(){
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+
+<!-- ═══ Sweet Effects Engine — runs after React mounts ══════════════════ -->
+<script>
+(function(){
+  var PHRASES=["For Every Click You Make","Watching Nigerian Brands","With Just Your Smartphone","Paid Daily To Your Bank","By Engaging Top Brands"];
+  var pi=0,ci=0,deleting=false,lastTs=0,pauseActive=false,pauseTimer=null;
+  var TY=65,TD=38,PAUSE=2350;
+
+  function getEl(){return document.getElementById('tw-target');}
+
+  function tick(){
+    var e=getEl();if(!e)return;
+    var ph=PHRASES[pi];
+    if(!deleting){
+      ci++;e.textContent=ph.slice(0,ci);
+      if(ci>=ph.length){pauseActive=true;clearTimeout(pauseTimer);pauseTimer=setTimeout(function(){pauseActive=false;deleting=true;},PAUSE);return;}
+    } else {
+      ci--;e.textContent=ph.slice(0,ci);
+      if(ci<=0){deleting=false;pi=(pi+1)%PHRASES.length;ci=0;}
+    }
+  }
+
+  function loop(ts){
+    if(!pauseActive){var sp=deleting?TD:TY;if(ts-lastTs>sp){tick();lastTs=ts;}}
+    requestAnimationFrame(loop);
+  }
+
+  function addSparkles(hero){
+    var d=document.createElement('div');d.className='hero-sparks';
+    var cols=['rgba(22,163,74,0.5)','rgba(22,163,74,0.28)','rgba(245,158,11,0.45)','rgba(245,158,11,0.22)','rgba(124,58,237,0.32)','rgba(16,185,129,0.38)'];
+    for(var i=0;i<24;i++){
+      var s=document.createElement('div');s.className='spark';
+      var sz=(Math.random()*5+2.5).toFixed(1);
+      var c=cols[Math.floor(Math.random()*cols.length)];
+      s.style.cssText='left:'+Math.round(Math.random()*100)+'%;top:'+Math.round(38+Math.random()*55)+'%;width:'+sz+'px;height:'+sz+'px;background:radial-gradient(circle,'+c+',transparent);animation-duration:'+(3.5+Math.random()*5).toFixed(2)+'s;animation-delay:'+(Math.random()*7).toFixed(2)+'s;';
+      d.appendChild(s);
+    }
+    hero.insertBefore(d,hero.firstChild);
+  }
+
+  function wrapLogos(){
+    document.querySelectorAll('.logo-mark').forEach(function(lm){
+      if(lm.parentElement&&lm.parentElement.classList.contains('logo-mark-wrap'))return;
+      var w=document.createElement('div');w.className='logo-mark-wrap';
+      lm.parentNode.insertBefore(w,lm);w.appendChild(lm);
+      var r=document.createElement('div');r.className='logo-pulse-ring';w.appendChild(r);
+    });
+  }
+
+  function scrollReveal(){
+    var ro=new IntersectionObserver(function(entries){
+      entries.forEach(function(e,idx){if(e.isIntersecting){setTimeout(function(){e.target.classList.add('vis');},idx*72);ro.unobserve(e.target);}});
+    },{threshold:0.1});
+    document.querySelectorAll('.plan-card,.stat-card').forEach(function(el){el.classList.add('reveal-up');ro.observe(el);});
+  }
+
+  function statFloat(){
+    var c=document.querySelector('.hero-content');if(!c)return;
+    var r=c.querySelector('div[style*="gap:32"]');if(!r)return;
+    r.querySelectorAll(':scope > div').forEach(function(el){el.classList.add('hero-stat-float');});
+  }
+
+  function taskAnim(){
+    var seen=new WeakSet();
+    function run(){document.querySelectorAll('.task-card:not(.tc-anim)').forEach(function(el,i){if(seen.has(el))return;seen.add(el);el.classList.add('tc-anim');el.style.animationDelay=(i*0.056).toFixed(3)+'s';});}
+    run();
+    new MutationObserver(run).observe(document.body,{childList:true,subtree:true});
+  }
+
+  function init(){
+    if(!getEl()){setTimeout(init,120);return;}
+    wrapLogos();
+    var pill=document.querySelector('.hero-content .pill');if(pill)pill.classList.add('hero-pill-anim');
+    document.querySelectorAll('.nav-bar-landing .btn-primary').forEach(function(b){b.classList.add('nav-cta-glow');});
+    statFloat();scrollReveal();taskAnim();
+    var hs=document.querySelector('.hero-section');if(hs)addSparkles(hs);
+    requestAnimationFrame(loop);
+  }
+
+  if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',init);}
+  else{setTimeout(init,80);}
+})();
 </script>
 </body>
 </html>
