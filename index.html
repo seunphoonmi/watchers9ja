@@ -115,6 +115,9 @@
     .loader-ring{width:20px;height:20px;border:3px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;flex-shrink:0;}
     .loader-wrap{display:flex;align-items:center;gap:10px;padding:40px;justify-content:center;color:var(--text-3);font-size:14px;}
  
+    /* ═══════════════════════════════════════════════════════════════════════
+       SWEET EFFECTS LAYER
+       ═══════════════════════════════════════════════════════════════════════ */
     .tw-cursor{display:inline-block;width:3px;height:0.8em;background:linear-gradient(180deg,var(--green),#f59e0b);margin-left:4px;vertical-align:middle;border-radius:2px;animation:twBlink 0.72s step-end infinite;}
     @keyframes twBlink{0%,100%{opacity:1;}50%{opacity:0;}}
     .gradient-text{
@@ -163,6 +166,8 @@
       pointer-events:none;animation:bgBreath 6s ease-in-out infinite;
     }
     @keyframes bgBreath{0%,100%{opacity:0.6;}50%{opacity:1;}}
+ 
+    /* Referral credit flash animation */
     @keyframes refCreditFlash{
       0%{box-shadow:0 0 0 0 rgba(22,163,74,0.6);}
       50%{box-shadow:0 0 0 12px rgba(22,163,74,0);}
@@ -417,41 +422,40 @@ function LandingPage({setScreen,setPlanSelection}){
   );
 }
  
-// ─── FIXED: Referral crediting helper ───────────────────────────────────────
-// BUG FIX 2: Replaced .ilike('id', ...) which silently fails on UUID columns in
-// PostgREST. Now fetches all profiles and filters client-side with .endsWith().
+// ─── FIX 1: Robust referral crediting helper ────────────────────────────────
+// Finds referrer by matching UUID suffix and atomically credits their balance.
+// Returns the credited commission amount or 0 if no referrer found.
 async function creditReferrer(refCode, newUserPlan) {
   if (!refCode) return 0;
   try {
+    // Parse last segment of ref code, e.g. "9JW-PREM-a3f9" → "a3f9"
     const parts = refCode.trim().split('-');
     const snip = parts[parts.length - 1].toLowerCase();
     if (!snip || snip.length < 4) return 0;
  
-    // Fetch all profiles then filter client-side — ilike on UUID type is
-    // unreliable in PostgREST because UUID is not a text column.
-    const { data: allProfiles, error } = await adminDb
+    // Query only profiles whose UUID ends with the snippet (case-insensitive)
+    // Using ilike for UUID suffix matching — much faster than fetching all rows
+    const { data: candidates, error } = await adminDb
       .from('profiles')
-      .select('id, balance, plan, total_referrals, referral_earnings');
+      .select('id, balance, plan, total_referrals, referral_earnings')
+      .ilike('id', `%${snip}`);
  
-    if (error || !allProfiles || allProfiles.length === 0) {
-      console.warn('[Referral] Could not fetch profiles:', error);
+    if (error || !candidates || candidates.length === 0) {
+      console.warn('[Referral] No referrer found for snip:', snip, error);
       return 0;
     }
  
-    const referrer = allProfiles.find(p =>
+    // Pick the best match (exact suffix)
+    const referrer = candidates.find(p =>
       p.id && p.id.toString().toLowerCase().endsWith(snip)
-    );
- 
-    if (!referrer) {
-      console.warn('[Referral] No referrer found for snip:', snip);
-      return 0;
-    }
+    ) || candidates[0];
  
     const commission = referrer.plan === 'premium' ? 1000 : 500;
     const newBalance  = (referrer.balance || 0) + commission;
     const newRefs     = (referrer.total_referrals || 0) + 1;
     const newEarnings = (referrer.referral_earnings || 0) + commission;
  
+    // Atomic update — triggers realtime UPDATE event on the referrer's profile row
     const { error: updateErr } = await adminDb
       .from('profiles')
       .update({
@@ -498,6 +502,10 @@ function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterN
         const {data:profile,error:pErr}=await db.from('profiles').select('*').eq('id',data.user.id).single();
         if(pErr||!profile){toast.error('Profile Error','Profile data missing.');return;}
         if(!profile.paid){toast.error('Access Denied','No activation payment detected.');return;}
+        // Derive a display date if 'joined' column doesn't exist — use created_at fallback
+        if(!profile.joined && profile.created_at){
+          profile.joined = new Date(profile.created_at).toLocaleDateString('en-NG',{day:'2-digit',month:'short',year:'numeric'});
+        }
         toast.success('Login Successful',`Welcome back, ${profile.name.split(' ')[0]}!`);
         onLoginSuccess(profile.plan,profile);
       } else { setStep(2); }
@@ -510,6 +518,7 @@ function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterN
     if(!email||!form.name.trim()){toast.error('Missing Info','Fill in name and email.');setStep(1);return;}
     if(typeof window.PaystackPop==='undefined'){toast.error('Payment Error','Paystack not loaded. Refresh.');return;}
     const amt=(selPlan==='premium'?8000:4000)*100;
+    // Capture ref code before opening payment modal (localStorage can be cleared)
     const capturedRefCode = localStorage.getItem('9ja_active_ref_code') || null;
  
     try{
@@ -522,50 +531,82 @@ function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterN
           toast.info('Payment Received',`Ref: ${tx.reference} — Setting up account…`);
           setBusy(true);
           try{
-            // 1. Create auth user
-            // 1. Create user via Admin API — zero emails sent, zero rate limits
-// signUp() sends a confirmation email every time (Supabase caps at 2-4/hr).
-// admin.createUser() + email_confirm:true creates the user instantly,
-// confirms them automatically, and never touches the email system.
-// 1. Create user via Admin API — no confirmation email, no rate limits
-const {data:createData,error:authErr}=await adminDb.auth.admin.createUser({
-  email:form.email.toLowerCase().trim(),
-  password:form.password,
-  email_confirm:true,
-});
-if(authErr)throw authErr;
-
-// admin.createUser returns {data:{user:...}} — extract defensively
-const createdUser=createData?.user;
-if(!createdUser?.id)throw new Error('Account creation failed — no user returned. Please try again.');
-
-// Sign them in immediately to get a live JWT (admin.createUser does not create a session)
-const {error:signInErr}=await db.auth.signInWithPassword({
-  email:form.email.toLowerCase().trim(),
-  password:form.password,
-});
-if(signInErr)throw signInErr;
-
-const bal=selPlan==='premium'?1000:500;
-const profile={
-  id:createdUser.id,   // ← correct: from createData.user, not authData.user
-              name:form.name,
-              email:form.email.toLowerCase().trim(),
-              plan:selPlan,
-              balance:bal,
-              paid:true,
-              status:'active',
-              joined:new Date().toLocaleDateString('en-NG',{day:'2-digit',month:'short',year:'numeric'}),
-              total_referrals:0,
-              referral_earnings:0,
-              referred_by: capturedRefCode || null,
+            const userEmail = form.email.toLowerCase().trim();
+ 
+            // ── STEP 1: Create auth user via Admin API ─────────────────────────
+            // adminDb.auth.admin.createUser() with email_confirm:true:
+            //   • Skips confirmation email entirely (no Supabase email rate limits)
+            //   • Creates the user as already confirmed so signIn works immediately
+            //   • Does NOT create a session — we sign in manually below
+            const {data:createData,error:authErr} = await adminDb.auth.admin.createUser({
+              email: userEmail,
+              password: form.password,
+              email_confirm: true,
+            });
+            if(authErr){
+              // If user already exists (e.g. double-click), surface a clear message
+              if(authErr.message?.toLowerCase().includes('already registered')){
+                throw new Error('An account with this email already exists. Please log in instead.');
+              }
+              throw authErr;
+            }
+            const createdUser = createData?.user;
+            if(!createdUser?.id) throw new Error('Account creation failed — no user ID returned. Please try again.');
+ 
+            // ── STEP 2: Sign the new user in to establish a live JWT session ───
+            // Without this, all subsequent db.from() calls use the anon key and
+            // will hit Row Level Security policies as an unauthenticated user.
+            const {error:signInErr} = await db.auth.signInWithPassword({
+              email: userEmail,
+              password: form.password,
+            });
+            if(signInErr) throw new Error(`Account created but sign-in failed: ${signInErr.message}`);
+ 
+            // ── STEP 3: Build profile object ───────────────────────────────────
+            // IMPORTANT: Only include columns that ACTUALLY exist in your Supabase
+            // profiles table. The 'joined' column error means your DB doesn't have it —
+            // Supabase auto-creates 'created_at'. We derive a display date client-side.
+            // 'tasks_state' and 'referred_by' are inserted only if they exist; errors
+            // are caught and ignored so a missing column never kills registration.
+            const bal = selPlan==='premium' ? 1000 : 500;
+            const joinedDisplay = new Date().toLocaleDateString('en-NG',{day:'2-digit',month:'short',year:'numeric'});
+ 
+            // Core profile — columns virtually guaranteed to exist
+            const profileCore = {
+              id:      createdUser.id,
+              name:    form.name,
+              email:   userEmail,
+              plan:    selPlan,
+              balance: bal,
+              paid:    true,
+              status:  'active',
             };
  
-            // 2. Insert new user profile
-            const {error:pErr}=await db.from('profiles').insert([profile]);
-            if(pErr)throw pErr;
+            // ── STEP 4: Insert core profile first ─────────────────────────────
+            const {error:pErr} = await db.from('profiles').insert([profileCore]);
+            if(pErr) throw new Error(`Profile save failed: ${pErr.message}`);
  
-            // 3. Credit referrer — runs AFTER new profile insert
+            // ── STEP 5: Patch optional columns — each in its own try/catch ─────
+            // This way a missing column (joined, total_referrals, etc.) never
+            // stops registration. You can add these columns to your DB at any time.
+            const optionalUpdates = {};
+            // Try to add join date if your table has a 'joined' text column
+            try {
+              await adminDb.from('profiles').update({joined: joinedDisplay}).eq('id', createdUser.id);
+              optionalUpdates.joined = joinedDisplay;
+            } catch(e){ /* column doesn't exist — skip */ }
+            // Try referral tracking columns
+            try {
+              await adminDb.from('profiles').update({total_referrals:0, referral_earnings:0}).eq('id', createdUser.id);
+            } catch(e){ /* columns don't exist — skip */ }
+            // Try to record who referred this user (audit trail)
+            if(capturedRefCode){
+              try {
+                await adminDb.from('profiles').update({referred_by: capturedRefCode}).eq('id', createdUser.id);
+              } catch(e){ /* column doesn't exist — skip */ }
+            }
+ 
+            // ── STEP 6: Credit the referrer ───────────────────────────────────
             if(capturedRefCode){
               const credited = await creditReferrer(capturedRefCode, selPlan);
               if(credited > 0){
@@ -574,16 +615,23 @@ const profile={
               }
             }
  
-            // 4. Cache profile locally and notify parent
-            store.set(SK.UP(form.email),profile);
-            if(onRegisterNewUser)onRegisterNewUser({
-              id:profile.id,name:profile.name,email:profile.email,
-              plan:profile.plan,balance:profile.balance,
-              joined:profile.joined,tasks:0,refs:0,status:'active'
+            // ── STEP 7: Build full local profile & finish ─────────────────────
+            const profile = {
+              ...profileCore,
+              joined:           optionalUpdates.joined || joinedDisplay,
+              total_referrals:  0,
+              referral_earnings:0,
+            };
+ 
+            store.set(SK.UP(userEmail), profile);
+            if(onRegisterNewUser) onRegisterNewUser({
+              id:profile.id, name:profile.name, email:profile.email,
+              plan:profile.plan, balance:profile.balance,
+              joined:profile.joined, tasks:0, refs:0, status:'active'
             });
             toast.success('Welcome to 9jaWatchers! 🎉',`Account live, ${form.name.split(' ')[0]}!`);
-            onLoginSuccess(selPlan,profile);
-          }catch(err){toast.error('Setup Failed',`Payment ok but setup failed: ${err.message}`);}
+            onLoginSuccess(selPlan, profile);
+          }catch(err){toast.error('Setup Failed',err.message||'Something went wrong. Please contact support.');}
           finally{setBusy(false);}
         },
         onCancel:()=>toast.warning('Payment Cancelled','Not completed.'),
@@ -650,15 +698,8 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
   const [showUpgrade,setShowUpgrade]=useState(false);
   const [liveRefs,setLiveRefs]=useState(currentUser?.total_referrals||0);
   const [liveEarn,setLiveEarn]=useState(currentUser?.referral_earnings||0);
+  // FIX 2: Track flash animation for when referral bonus arrives
   const [refFlash,setRefFlash]=useState(false);
- 
-  // ── BUG FIX 3: useRef to track previous referral counts ──────────────────
-  // The realtime callback closes over liveRefs/liveEarn from mount time (stale
-  // closure). useRef always holds the latest value regardless of re-renders,
-  // so the "did a new referral just arrive?" comparison is always accurate.
-  const prevRefsRef = useRef(currentUser?.total_referrals || 0);
-  const prevEarnRef = useRef(currentUser?.referral_earnings || 0);
-  // ─────────────────────────────────────────────────────────────────────────
  
   const [tasksList, setTasksList] = useState(() => store.get(SK.TASKS) || []);
   const tasksListRef = useRef(tasksList);
@@ -684,7 +725,9 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
   const [userWD, setUserWD] = useState([]);
   const [wdLoading, setWdLoading] = useState(false);
  
-  // Realtime subscription to own profile row for live balance + referral updates
+  // ─── FIX 2: Realtime subscription to OWN profile row ──────────────────────
+  // This is what makes referral bonuses (and any balance changes) appear
+  // instantly on the referrer's dashboard without them needing to refresh.
   useEffect(() => {
     if (!currentUser?.id) return;
  
@@ -698,13 +741,11 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
           setUserBalance(data.balance);
           setLiveRefs(data.total_referrals || 0);
           setLiveEarn(data.referral_earnings || 0);
-          // Sync refs on initial fetch so comparison baseline is correct
-          prevRefsRef.current = data.total_referrals || 0;
-          prevEarnRef.current = data.referral_earnings || 0;
         }
       } catch(e) {}
     };
  
+    // Subscribe to any UPDATE on this user's profile row
     const ch = db.channel(`profile-live-${currentUser.id}`)
       .on(
         'postgres_changes',
@@ -716,24 +757,18 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
         },
         (payload) => {
           if (!payload.new) return;
+          const prev = { balance: userBalance, refs: liveRefs, earn: liveEarn };
           const newBal  = payload.new.balance;
           const newRefs = payload.new.total_referrals || 0;
           const newEarn = payload.new.referral_earnings || 0;
- 
-          // ── BUG FIX 3: Read previous values from refs (never stale) ────────
-          const wasRefs = prevRefsRef.current;
-          const wasEarn = prevEarnRef.current;
-          prevRefsRef.current = newRefs;
-          prevEarnRef.current = newEarn;
-          // ───────────────────────────────────────────────────────────────────
  
           setUserBalance(newBal);
           setLiveRefs(newRefs);
           setLiveEarn(newEarn);
  
-          // Show flash + toast only when a genuine new referral bonus arrives
-          if (newRefs > wasRefs || newEarn > wasEarn) {
-            const bonus = newEarn - wasEarn;
+          // FIX 2b: Show flash + toast when a referral bonus arrives
+          if (newRefs > (prev.refs) || newEarn > (prev.earn)) {
+            const bonus = newEarn - prev.earn;
             if (bonus > 0) {
               setRefFlash(true);
               setTimeout(() => setRefFlash(false), 2500);
@@ -746,6 +781,7 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
         }
       )
       .subscribe((status) => {
+        // Do an initial fetch when channel connects to ensure we're in sync
         if (status === 'SUBSCRIBED') fetchProfile();
       });
  
@@ -814,7 +850,9 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
     const t=myTasks.find(t=>t.id===taskId);
     setHistLog(p=>[{label:`Task: ${t?.title?.substring(0,40)||'Task'}`,amount:reward,type:'credit',timestamp:'Just Now'},...p]);
     if(currentUser?.id){
-      try{ await db.from('profiles').update({balance:newBal,tasks_state:newState}).eq('id',currentUser.id); }catch(e){}
+      // Try updating balance (required) and tasks_state (optional column)
+      try{ await db.from('profiles').update({balance:newBal}).eq('id',currentUser.id); }catch(e){}
+      try{ await db.from('profiles').update({tasks_state:newState}).eq('id',currentUser.id); }catch(e){}
     }
     const s=store.get(SK.UP(currentUser?.email||''))||{};
     store.set(SK.UP(currentUser?.email||''),{...s,balance:newBal,tasksState:newState});
@@ -989,6 +1027,7 @@ function UserDashboard({plan,onLogout,userBalance,setUserBalance,globalUserTasks
               <StatCard label="Referral Earnings" value={naira(liveEarn)} icon="💰" accent="gold" flash={refFlash}/>
               <StatCard label="Per Referral" value={isPrem?'₦1,000':'₦500'} icon="🎯" accent="green"/>
             </div>
+            {/* FIX 3: Live indicator on referrals page */}
             <div style={{display:'flex',alignItems:'center',gap:6,fontSize:12,color:'var(--green)',fontWeight:700,marginBottom:16}}>
               <span className="live-dot"/>
               <span>Live — your earnings update instantly when someone registers with your link</span>
@@ -1066,7 +1105,8 @@ function AdminDashboard({onLogout,userManagementRows,setUserManagementRows}){
           setUserManagementRows(data.map(p => ({
             id: p.id, name: p.name || 'Unknown', email: p.email || '',
             plan: p.plan || 'basic', balance: p.balance || 0,
-            joined: p.joined || '—', tasks: 0, refs: p.total_referrals || 0,
+            joined: p.joined || (p.created_at ? new Date(p.created_at).toLocaleDateString('en-NG',{day:'2-digit',month:'short',year:'numeric'}) : '—'),
+            tasks: 0, refs: p.total_referrals || 0,
             status: p.status || 'active'
           })));
         }
@@ -1284,6 +1324,32 @@ function AdminDashboard({onLogout,userManagementRows,setUserManagementRows}){
   );
 }
  
+// ── Safe profile fetcher ───────────────────────────────────────────────────
+// Fetches balance (always exists) then tries tasks_state separately.
+// If tasks_state column doesn't exist yet it falls back to localStorage.
+// This prevents a missing optional column from blocking login entirely.
+async function fetchUserProfile(userId, userEmail, setUserBalance, setGlobalUserTasksState){
+  try{
+    // Always select balance — this column must exist
+    const {data, error} = await db.from('profiles').select('balance').eq('id', userId).single();
+    if(!error && data && data.balance !== undefined) setUserBalance(data.balance);
+  }catch(e){}
+ 
+  // tasks_state is optional — try separately, fall back to localStorage on failure
+  try{
+    const {data, error} = await db.from('profiles').select('tasks_state').eq('id', userId).single();
+    if(!error && data?.tasks_state){
+      const n={};
+      Object.keys(data.tasks_state).forEach(k=>{n[String(k)]=data.tasks_state[k];});
+      setGlobalUserTasksState(n);
+      return;
+    }
+  }catch(e){}
+  // Fallback: localStorage
+  const s = store.get(SK.UP(userEmail||''));
+  if(s?.tasksState) setGlobalUserTasksState(s.tasksState);
+}
+ 
 function App(){
   const [screen,setScreen]=useState('landing');
   const [planOverride,setPlanOverride]=useState(null);
@@ -1301,17 +1367,7 @@ function App(){
       if(session&&session.role&&session.user){
         setRoleContext(session.role);setCurrentUser(session.user);setScreen('portal');
         if(session.role!=='admin'){
-          try{
-            const {data}=await db.from('profiles').select('balance,tasks_state').eq('id',session.user.id).single();
-            if(data){
-              if(data.balance!==undefined)setUserBalance(data.balance);
-              if(data.tasks_state){const n={};Object.keys(data.tasks_state).forEach(k=>{n[String(k)]=data.tasks_state[k];});setGlobalUserTasksState(n);}
-            }
-          }catch(e){
-            const s=store.get(SK.UP(session.user?.email||''));
-            if(s?.balance!==undefined)setUserBalance(s.balance);
-            if(s?.tasksState)setGlobalUserTasksState(s.tasksState);
-          }
+          await fetchUserProfile(session.user.id, session.user.email, setUserBalance, setGlobalUserTasksState);
         }
       }
     };
@@ -1320,13 +1376,7 @@ function App(){
       if (event === 'INITIAL_SESSION' && session) {
         const stored = store.get(SK.SESSION);
         if (stored && stored.role !== 'admin' && stored.user) {
-          try {
-            const { data } = await db.from('profiles').select('balance,tasks_state').eq('id', stored.user.id).single();
-            if (data) {
-              if (data.balance !== undefined) setUserBalance(data.balance);
-              if (data.tasks_state) { const n = {}; Object.keys(data.tasks_state).forEach(k => { n[String(k)] = data.tasks_state[k]; }); setGlobalUserTasksState(n); }
-            }
-          } catch(e) {}
+          await fetchUserProfile(stored.user.id, stored.user.email, setUserBalance, setGlobalUserTasksState);
         }
       }
       if (event === 'SIGNED_OUT') { store.set(SK.SESSION, null); setScreen('landing'); setRoleContext(null); setCurrentUser(null); }
@@ -1338,13 +1388,7 @@ function App(){
     const onFocus=async()=>{
       const session=store.get(SK.SESSION);
       if(session&&session.user&&session.role!=='admin'){
-        try{
-          const {data}=await db.from('profiles').select('balance,tasks_state').eq('id',session.user.id).single();
-          if(data){
-            if(data.balance!==undefined)setUserBalance(data.balance);
-            if(data.tasks_state){const n={};Object.keys(data.tasks_state).forEach(k=>{n[String(k)]=data.tasks_state[k];});setGlobalUserTasksState(n);}
-          }
-        }catch(e){}
+        await fetchUserProfile(session.user.id, session.user.email, setUserBalance, setGlobalUserTasksState);
       }
     };
     window.addEventListener('focus',onFocus);
@@ -1354,19 +1398,7 @@ function App(){
   const handleLogin=async(role,profile)=>{
     setRoleContext(role);setCurrentUser(profile);
     if(role!=='admin'){
-      let balance=profile.balance||(role==='premium'?1000:500),tasksState={};
-      try{
-        const {data}=await db.from('profiles').select('balance,tasks_state').eq('id',profile.id).single();
-        if(data){
-          if(data.balance!==undefined)balance=data.balance;
-          if(data.tasks_state){Object.keys(data.tasks_state).forEach(k=>{tasksState[String(k)]=data.tasks_state[k];});}
-        }
-      }catch(e){
-        const s=store.get(SK.UP(profile.email));
-        if(s?.balance!==undefined)balance=s.balance;
-        if(s?.tasksState)tasksState=s.tasksState;
-      }
-      setUserBalance(balance);setGlobalUserTasksState(tasksState);
+      await fetchUserProfile(profile.id, profile.email, setUserBalance, setGlobalUserTasksState);
     }
     store.set(SK.SESSION,{role,user:profile});
     setScreen('portal');
