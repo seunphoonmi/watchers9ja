@@ -527,26 +527,28 @@ function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterN
 // signUp() sends a confirmation email every time (Supabase caps at 2-4/hr).
 // admin.createUser() + email_confirm:true creates the user instantly,
 // confirms them automatically, and never touches the email system.
-const {data:authData,error:authErr}=await adminDb.auth.admin.createUser({
-  email: form.email.toLowerCase().trim(),
-  password: form.password,
-  email_confirm: true,
+// 1. Create user via Admin API — no confirmation email, no rate limits
+const {data:createData,error:authErr}=await adminDb.auth.admin.createUser({
+  email:form.email.toLowerCase().trim(),
+  password:form.password,
+  email_confirm:true,
 });
 if(authErr)throw authErr;
 
-// Sign them in immediately — admin createUser does NOT create a session,
-// so we must call signInWithPassword to get the JWT that unlocks
-// Realtime subscriptions, RLS-protected reads, and the dashboard.
+// admin.createUser returns {data:{user:...}} — extract defensively
+const createdUser=createData?.user;
+if(!createdUser?.id)throw new Error('Account creation failed — no user returned. Please try again.');
+
+// Sign them in immediately to get a live JWT (admin.createUser does not create a session)
 const {error:signInErr}=await db.auth.signInWithPassword({
-  email: form.email.toLowerCase().trim(),
-  password: form.password,
+  email:form.email.toLowerCase().trim(),
+  password:form.password,
 });
 if(signInErr)throw signInErr;
-            // ─────────────────────────────────────────────────────────────────
- 
-            const bal=selPlan==='premium'?1000:500;
-            const profile={
-              id:authData.user.id,
+
+const bal=selPlan==='premium'?1000:500;
+const profile={
+  id:createdUser.id,   // ← correct: from createData.user, not authData.user
               name:form.name,
               email:form.email.toLowerCase().trim(),
               plan:selPlan,
