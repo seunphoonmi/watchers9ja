@@ -184,15 +184,41 @@ const { useState, useEffect, useRef, useCallback } = React;
  
 const SUPABASE_URL = "https://wvvggkqsohzmbypdjexc.supabase.co";
 const ANON_KEY     = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2dmdna3Fzb2h6bWJ5cGRqZXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxODI5NDYsImV4cCI6MjA5NDc1ODk0Nn0.AJtvvZMA9tFSBXlwXLmZ3oEP5skFAl92sbv4Br2McKA";
-const SERVICE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2dmdna3Fzb2h6bWJ5cGRqZXhjIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTE4Mjk0NiwiZXhwIjoyMDk0NzU4OTQ2fQ.58IcCa0bFz0YKhS8ocCCbUC71U51-sIcw8t9XMbD5-8";
+// ✅ SERVICE_KEY removed — it now lives only in Supabase Edge Functions (server-side).
+//    Rotating it in your Supabase dashboard will not break the client.
  
 const { createClient } = window.supabase;
-const db      = createClient(SUPABASE_URL, ANON_KEY);
-const adminDb = createClient(SUPABASE_URL, SERVICE_KEY, {
-  auth: { autoRefreshToken: false, persistSession: false }
-});
+const db = createClient(SUPABASE_URL, ANON_KEY);
+// adminDb is gone from the client. All privileged operations go through Edge Functions.
  
 const ADMIN_EMAIL = "admin@naijawatchers.com";
+ 
+/**
+ * edgeFn(name, body, token?)
+ * ─────────────────────────────────────────────────────────────────────────
+ * Calls a Supabase Edge Function by name.
+ * Automatically attaches the current user's JWT so the function can verify
+ * the caller is the admin before executing privileged operations.
+ * Throws on HTTP errors or when the function returns { error }.
+ */
+async function edgeFn(name, body, token=null){
+  // Get the current session token if not supplied
+  if(!token){
+    const {data:{session}} = await db.auth.getSession();
+    token = session?.access_token || null;
+  }
+  const headers = {'Content-Type':'application/json'};
+  if(token) headers['Authorization'] = `Bearer ${token}`;
+ 
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
+    method:'POST',
+    headers,
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if(!res.ok || data.error) throw new Error(data.error || `Edge function ${name} failed (${res.status})`);
+  return data;
+}
  
 let _tc = 0; const _tl = new Set();
 const toast = {
@@ -422,61 +448,8 @@ function LandingPage({setScreen,setPlanSelection}){
   );
 }
  
-// ─── FIX 1: Robust referral crediting helper ────────────────────────────────
-// Finds referrer by matching UUID suffix and atomically credits their balance.
-// Returns the credited commission amount or 0 if no referrer found.
-async function creditReferrer(refCode, newUserPlan) {
-  if (!refCode) return 0;
-  try {
-    // Parse last segment of ref code, e.g. "9JW-PREM-a3f9" → "a3f9"
-    const parts = refCode.trim().split('-');
-    const snip = parts[parts.length - 1].toLowerCase();
-    if (!snip || snip.length < 4) return 0;
- 
-    // Query only profiles whose UUID ends with the snippet (case-insensitive)
-    // Using ilike for UUID suffix matching — much faster than fetching all rows
-    const { data: candidates, error } = await adminDb
-      .from('profiles')
-      .select('id, balance, plan, total_referrals, referral_earnings')
-      .ilike('id', `%${snip}`);
- 
-    if (error || !candidates || candidates.length === 0) {
-      console.warn('[Referral] No referrer found for snip:', snip, error);
-      return 0;
-    }
- 
-    // Pick the best match (exact suffix)
-    const referrer = candidates.find(p =>
-      p.id && p.id.toString().toLowerCase().endsWith(snip)
-    ) || candidates[0];
- 
-    const commission = referrer.plan === 'premium' ? 1000 : 500;
-    const newBalance  = (referrer.balance || 0) + commission;
-    const newRefs     = (referrer.total_referrals || 0) + 1;
-    const newEarnings = (referrer.referral_earnings || 0) + commission;
- 
-    // Atomic update — triggers realtime UPDATE event on the referrer's profile row
-    const { error: updateErr } = await adminDb
-      .from('profiles')
-      .update({
-        balance:           newBalance,
-        total_referrals:   newRefs,
-        referral_earnings: newEarnings,
-      })
-      .eq('id', referrer.id);
- 
-    if (updateErr) {
-      console.error('[Referral] Credit update failed:', updateErr);
-      return 0;
-    }
- 
-    console.log(`[Referral] ✅ Credited ₦${commission} to referrer ${referrer.id}`);
-    return commission;
-  } catch (err) {
-    console.error('[Referral] Unexpected error:', err);
-    return 0;
-  }
-}
+// creditReferrer has moved to the register-user Edge Function (server-side).
+// It is no longer in the client — the service key is gone from this file.
  
 function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterNewUser}){
   const isLogin=mode==='login';
@@ -531,103 +504,40 @@ function AuthPage({mode,setScreen,onLoginSuccess,initialSelectedPlan,onRegisterN
           toast.info('Payment Received',`Ref: ${tx.reference} — Setting up account…`);
           setBusy(true);
           try{
-            const userEmail = form.email.toLowerCase().trim();
- 
-            // ── STEP 1: Create auth user via Admin API ─────────────────────────
-            // adminDb.auth.admin.createUser() with email_confirm:true:
-            //   • Skips confirmation email entirely (no Supabase email rate limits)
-            //   • Creates the user as already confirmed so signIn works immediately
-            //   • Does NOT create a session — we sign in manually below
-            const {data:createData,error:authErr} = await adminDb.auth.admin.createUser({
-              email: userEmail,
+            // ── Single edge function call replaces ~60 lines of client-side admin ops ──
+            // The function: verifies payment with Paystack, creates the auth user,
+            // inserts the profile, patches optional columns, credits the referrer,
+            // and returns a live session. The service key never touches this file.
+            const result = await edgeFn('register-user', {
+              paystackReference: tx.reference,
+              email:   form.email.toLowerCase().trim(),
               password: form.password,
-              email_confirm: true,
-            });
-            if(authErr){
-              // If user already exists (e.g. double-click), surface a clear message
-              if(authErr.message?.toLowerCase().includes('already registered')){
-                throw new Error('An account with this email already exists. Please log in instead.');
-              }
-              throw authErr;
-            }
-            const createdUser = createData?.user;
-            if(!createdUser?.id) throw new Error('Account creation failed — no user ID returned. Please try again.');
- 
-            // ── STEP 2: Sign the new user in to establish a live JWT session ───
-            // Without this, all subsequent db.from() calls use the anon key and
-            // will hit Row Level Security policies as an unauthenticated user.
-            const {error:signInErr} = await db.auth.signInWithPassword({
-              email: userEmail,
-              password: form.password,
-            });
-            if(signInErr) throw new Error(`Account created but sign-in failed: ${signInErr.message}`);
- 
-            // ── STEP 3: Build profile object ───────────────────────────────────
-            // IMPORTANT: Only include columns that ACTUALLY exist in your Supabase
-            // profiles table. The 'joined' column error means your DB doesn't have it —
-            // Supabase auto-creates 'created_at'. We derive a display date client-side.
-            // 'tasks_state' and 'referred_by' are inserted only if they exist; errors
-            // are caught and ignored so a missing column never kills registration.
-            const bal = selPlan==='premium' ? 1000 : 500;
-            const joinedDisplay = new Date().toLocaleDateString('en-NG',{day:'2-digit',month:'short',year:'numeric'});
- 
-            // Core profile — columns virtually guaranteed to exist
-            const profileCore = {
-              id:      createdUser.id,
-              name:    form.name,
-              email:   userEmail,
+              name:    form.name.trim(),
               plan:    selPlan,
-              balance: bal,
-              paid:    true,
-              status:  'active',
-            };
+              refCode: capturedRefCode,
+            });
  
-            // ── STEP 4: Insert core profile first ─────────────────────────────
-            const {error:pErr} = await db.from('profiles').insert([profileCore]);
-            if(pErr) throw new Error(`Profile save failed: ${pErr.message}`);
- 
-            // ── STEP 5: Patch optional columns — each in its own try/catch ─────
-            // This way a missing column (joined, total_referrals, etc.) never
-            // stops registration. You can add these columns to your DB at any time.
-            const optionalUpdates = {};
-            // Try to add join date if your table has a 'joined' text column
-            try {
-              await adminDb.from('profiles').update({joined: joinedDisplay}).eq('id', createdUser.id);
-              optionalUpdates.joined = joinedDisplay;
-            } catch(e){ /* column doesn't exist — skip */ }
-            // Try referral tracking columns
-            try {
-              await adminDb.from('profiles').update({total_referrals:0, referral_earnings:0}).eq('id', createdUser.id);
-            } catch(e){ /* columns don't exist — skip */ }
-            // Try to record who referred this user (audit trail)
-            if(capturedRefCode){
-              try {
-                await adminDb.from('profiles').update({referred_by: capturedRefCode}).eq('id', createdUser.id);
-              } catch(e){ /* column doesn't exist — skip */ }
+            // The function returned a session — set it so db.auth knows the user
+            if(result.session){
+              await db.auth.setSession({
+                access_token:  result.session.access_token,
+                refresh_token: result.session.refresh_token,
+              });
             }
  
-            // ── STEP 6: Credit the referrer ───────────────────────────────────
-            if(capturedRefCode){
-              const credited = await creditReferrer(capturedRefCode, selPlan);
-              if(credited > 0){
-                localStorage.removeItem('9ja_active_ref_code');
-                toast.success('Referral Bonus Sent! 🎉',`Your referrer just received ${naira(credited)}!`);
-              }
+            const profile = result.profile;
+ 
+            // Show referral bonus toast if someone got credited
+            if(result.referralCredited > 0){
+              localStorage.removeItem('9ja_active_ref_code');
+              toast.success('Referral Bonus Sent! 🎉',`Your referrer just received ${naira(result.referralCredited)}!`);
             }
  
-            // ── STEP 7: Build full local profile & finish ─────────────────────
-            const profile = {
-              ...profileCore,
-              joined:           optionalUpdates.joined || joinedDisplay,
-              total_referrals:  0,
-              referral_earnings:0,
-            };
- 
-            store.set(SK.UP(userEmail), profile);
+            store.set(SK.UP(form.email.toLowerCase().trim()), profile);
             if(onRegisterNewUser) onRegisterNewUser({
               id:profile.id, name:profile.name, email:profile.email,
               plan:profile.plan, balance:profile.balance,
-              joined:profile.joined, tasks:0, refs:0, status:'active'
+              joined:profile.joined||'—', tasks:0, refs:0, status:'active'
             });
             toast.success('Welcome to 9jaWatchers! 🎉',`Account live, ${form.name.split(' ')[0]}!`);
             onLoginSuccess(selPlan, profile);
@@ -1072,37 +982,39 @@ function AdminDashboard({onLogout,userManagementRows,setUserManagementRows}){
   useEffect(() => {
     const fetchTasks = async () => {
       try {
-        const { data, error } = await adminDb.from('tasks').select('*').order('id', { ascending: true });
+        // Use anon db for reads — tasks are public data, no service key needed
+        const { data, error } = await db.from('tasks').select('*').order('id', { ascending: true });
         if (!error && data) { setGlobalTasksList(data); store.set(SK.TASKS, data); }
       } catch(e) {}
     };
     fetchTasks();
-    const ch = adminDb.channel('admin-tasks-rt')
+    // Realtime uses the anon client — service key not needed for subscriptions
+    const ch = db.channel('admin-tasks-rt')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => fetchTasks())
       .subscribe();
-    return () => adminDb.removeChannel(ch);
+    return () => db.removeChannel(ch);
   }, []);
  
   useEffect(() => {
     const fetchWD = async () => {
       try {
-        const { data, error } = await adminDb.from('withdrawals').select('*').order('id', { ascending: false });
-        if (!error && data) setWithdrawalsList(data.map(mapWD));
+        const result = await edgeFn('admin-get-data', { resource: 'withdrawals' });
+        if (result.data) setWithdrawalsList(result.data.map(mapWD));
       } catch(e) { console.error('fetchWD:', e); }
     };
     fetchWD();
-    const ch = adminDb.channel('admin-withdrawals-rt')
+    const ch = db.channel('admin-withdrawals-rt')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'withdrawals' }, () => fetchWD())
       .subscribe((status) => { if (status === 'SUBSCRIBED') fetchWD(); });
-    return () => adminDb.removeChannel(ch);
+    return () => db.removeChannel(ch);
   }, []);
  
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const { data, error } = await adminDb.from('profiles').select('*').order('id', { ascending: false });
-        if (!error && data) {
-          setUserManagementRows(data.map(p => ({
+        const result = await edgeFn('admin-get-data', { resource: 'users' });
+        if (result.data) {
+          setUserManagementRows(result.data.map(p => ({
             id: p.id, name: p.name || 'Unknown', email: p.email || '',
             plan: p.plan || 'basic', balance: p.balance || 0,
             joined: p.joined || (p.created_at ? new Date(p.created_at).toLocaleDateString('en-NG',{day:'2-digit',month:'short',year:'numeric'}) : '—'),
@@ -1113,10 +1025,10 @@ function AdminDashboard({onLogout,userManagementRows,setUserManagementRows}){
       } catch(e) { console.error('fetchUsers:', e); }
     };
     fetchUsers();
-    const ch = adminDb.channel('admin-profiles-rt')
+    const ch = db.channel('admin-profiles-rt')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => fetchUsers())
       .subscribe();
-    return () => adminDb.removeChannel(ch);
+    return () => db.removeChannel(ch);
   }, []);
  
   const pending = withdrawalsList.filter(w => w.status === 'pending');
@@ -1140,38 +1052,52 @@ function AdminDashboard({onLogout,userManagementRows,setUserManagementRows}){
   };
  
   const approve = async (id) => {
-    const { error } = await adminDb.from('withdrawals').update({ status: 'approved' }).eq('id', id);
-    if (error) { toast.error('Update Failed', error.message); return; }
-    setWithdrawalsList(p => p.map(w => w.id === id ? { ...w, status: 'approved' } : w));
-    toast.success('Approved', 'Payout approved.');
+    try {
+      await edgeFn('admin-approve-withdrawal', { withdrawalId: id, action: 'approve' });
+      setWithdrawalsList(p => p.map(w => w.id === id ? { ...w, status: 'approved' } : w));
+      toast.success('Approved', 'Payout approved.');
+    } catch(err) { toast.error('Update Failed', err.message); }
   };
   const reject = async (id) => {
-    const { error } = await adminDb.from('withdrawals').update({ status: 'rejected' }).eq('id', id);
-    if (error) { toast.error('Update Failed', error.message); return; }
-    setWithdrawalsList(p => p.map(w => w.id === id ? { ...w, status: 'rejected' } : w));
-    toast.warning('Rejected', 'Request declined.');
+    try {
+      await edgeFn('admin-approve-withdrawal', { withdrawalId: id, action: 'reject' });
+      setWithdrawalsList(p => p.map(w => w.id === id ? { ...w, status: 'rejected' } : w));
+      toast.warning('Rejected', 'Request declined.');
+    } catch(err) { toast.error('Update Failed', err.message); }
   };
-  const removeTask = id => {
+  const removeTask = async (id) => {
     setGlobalTasksList(p => { const u = p.filter(t => t.id !== id); store.set(SK.TASKS, u); return u; });
-    adminDb.from('tasks').delete().eq('id', id);
+    try { await edgeFn('admin-manage-task', { action: 'delete', taskId: id }); }
+    catch(e) { console.error('removeTask:', e); }
     toast.info('Task Removed', 'Removed from platform.');
   };
-  const toggleSuspend = (id, cur) => {
+  const toggleSuspend = async (id, cur) => {
     const ns = cur === 'active' ? 'suspended' : 'active';
     setUserManagementRows(p => p.map(u => u.id === id ? { ...u, status: ns } : u));
-    adminDb.from('profiles').update({ status: ns }).eq('id', id);
+    try { await edgeFn('admin-manage-user', { userId: id, action: cur === 'active' ? 'suspend' : 'unsuspend' }); }
+    catch(e) { console.error('toggleSuspend:', e); }
     toast.info(cur === 'active' ? 'User Suspended' : 'User Unsuspended', '');
   };
-  const submitTask = e => {
+  const submitTask = async (e) => {
     e.preventDefault();
     if (!taskForm.title || !taskForm.url || !taskForm.reward) return;
-    const t = { type: taskForm.type, title: taskForm.title, url: taskForm.url, reward: Number(taskForm.reward), plan: taskForm.plan };
-    adminDb.from('tasks').insert([t]).then(({ error }) => {
-      if (error) toast.error('Sync Error', error.message);
-    });
-    setTaskForm({ type: 'video', title: '', url: '', reward: '', plan: 'both' });
-    setTaskSaved(true); setTimeout(() => setTaskSaved(false), 3000);
-    toast.success('Task Published!', `"${t.title.substring(0, 40)}" is now live.`);
+    try {
+      const result = await edgeFn('admin-manage-task', {
+        action: 'create',
+        type:   taskForm.type,
+        title:  taskForm.title,
+        url:    taskForm.url,
+        reward: Number(taskForm.reward),
+        plan:   taskForm.plan,
+      });
+      if (result.task) {
+        setGlobalTasksList(p => { const u = [...p, result.task]; store.set(SK.TASKS, u); return u; });
+      }
+      const publishedTitle = taskForm.title;
+      setTaskForm({ type: 'video', title: '', url: '', reward: '', plan: 'both' });
+      setTaskSaved(true); setTimeout(() => setTaskSaved(false), 3000);
+      toast.success('Task Published!', `"${publishedTitle.substring(0, 40)}" is now live.`);
+    } catch(err) { toast.error('Publish Failed', err.message); }
   };
  
   const adminNav=[
